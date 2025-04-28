@@ -1,6 +1,12 @@
+import pytest
+from django.http import QueryDict
 from django.utils.datastructures import MultiValueDict
 
 from rest_framework import serializers
+from rest_framework.exceptions import ErrorDetail
+from tests.models import (
+    CustomManagerModel, NullableOneToOneSource, OneToOneTarget
+)
 
 
 class BasicObject:
@@ -15,7 +21,7 @@ class BasicObject:
     def __eq__(self, other):
         if self._data.keys() != other._data.keys():
             return False
-        for key in self._data.keys():
+        for key in self._data:
             if self._data[key] != other._data[key]:
                 return False
         return True
@@ -27,7 +33,7 @@ class TestListSerializer:
     Note that this is in contrast to using ListSerializer as a field.
     """
 
-    def setup(self):
+    def setup_method(self):
         class IntegerListSerializer(serializers.ListSerializer):
             child = serializers.IntegerField()
         self.Serializer = IntegerListSerializer
@@ -52,13 +58,16 @@ class TestListSerializer:
         assert serializer.is_valid()
         assert serializer.validated_data == expected_output
 
+    def test_list_serializer_is_subscriptable(self):
+        assert serializers.ListSerializer is serializers.ListSerializer["foo"]
+
 
 class TestListSerializerContainingNestedSerializer:
     """
     Tests for using a ListSerializer containing another serializer.
     """
 
-    def setup(self):
+    def setup_method(self):
         class TestSerializer(serializers.Serializer):
             integer = serializers.IntegerField()
             boolean = serializers.BooleanField()
@@ -138,13 +147,68 @@ class TestListSerializerContainingNestedSerializer:
         assert serializer.is_valid()
         assert serializer.validated_data == expected_output
 
+    def test_update_allow_custom_child_validation(self):
+        """
+        Update a list of objects thanks custom run_child_validation implementation.
+        """
+
+        class TestUpdateSerializer(serializers.Serializer):
+            integer = serializers.IntegerField()
+            boolean = serializers.BooleanField()
+
+            def update(self, instance, validated_data):
+                instance._data.update(validated_data)
+                return instance
+
+            def validate(self, data):
+                # self.instance is set to current BasicObject instance
+                assert isinstance(self.instance, BasicObject)
+                # self.initial_data is current dictionary
+                assert isinstance(self.initial_data, dict)
+                assert self.initial_data["pk"] == self.instance.pk
+                return super().validate(data)
+
+        class ListUpdateSerializer(serializers.ListSerializer):
+            child = TestUpdateSerializer()
+
+            def run_child_validation(self, data):
+                # find related instance in self.instance list
+                child_instance = next(o for o in self.instance if o.pk == data["pk"])
+                # set instance and initial_data for child serializer
+                self.child.instance = child_instance
+                self.child.initial_data = data
+                return super().run_child_validation(data)
+
+            def update(self, instance, validated_data):
+                return [
+                    self.child.update(instance, attrs)
+                    for instance, attrs in zip(self.instance, validated_data)
+                ]
+
+        instance = [
+            BasicObject(pk=1, integer=11, private_field="a"),
+            BasicObject(pk=2, integer=22, private_field="b"),
+        ]
+        input_data = [
+            {"pk": 1, "integer": "123", "boolean": "true"},
+            {"pk": 2, "integer": "456", "boolean": "false"},
+        ]
+        expected_output = [
+            BasicObject(pk=1, integer=123, boolean=True, private_field="a"),
+            BasicObject(pk=2, integer=456, boolean=False, private_field="b"),
+        ]
+        serializer = ListUpdateSerializer(instance, data=input_data)
+        assert serializer.is_valid()
+        updated_instances = serializer.save()
+        assert updated_instances == expected_output
+
 
 class TestNestedListSerializer:
     """
     Tests for using a ListSerializer as a field.
     """
 
-    def setup(self):
+    def setup_method(self):
         class TestSerializer(serializers.Serializer):
             integers = serializers.ListSerializer(child=serializers.IntegerField())
             booleans = serializers.ListSerializer(child=serializers.BooleanField())
@@ -222,8 +286,51 @@ class TestNestedListSerializer:
         assert serializer.validated_data == expected_output
 
 
+class TestNestedListSerializerAllowEmpty:
+    """Tests the behaviour of allow_empty=False when a ListSerializer is used as a field."""
+
+    @pytest.mark.parametrize('partial', (False, True))
+    def test_allow_empty_true(self, partial):
+        """
+        If allow_empty is True, empty lists should be allowed regardless of the value
+        of partial on the parent serializer.
+        """
+        class ChildSerializer(serializers.Serializer):
+            id = serializers.IntegerField()
+
+        class ParentSerializer(serializers.Serializer):
+            ids = ChildSerializer(many=True, allow_empty=True)
+
+        serializer = ParentSerializer(data={'ids': []}, partial=partial)
+        assert serializer.is_valid()
+        assert serializer.validated_data == {
+            'ids': [],
+        }
+
+    @pytest.mark.parametrize('partial', (False, True))
+    def test_allow_empty_false(self, partial):
+        """
+        If allow_empty is False, empty lists should fail validation regardless of the value
+        of partial on the parent serializer.
+        """
+        class ChildSerializer(serializers.Serializer):
+            id = serializers.IntegerField()
+
+        class ParentSerializer(serializers.Serializer):
+            ids = ChildSerializer(many=True, allow_empty=False)
+
+        serializer = ParentSerializer(data={'ids': []}, partial=partial)
+        assert not serializer.is_valid()
+        assert serializer.errors == {
+            'ids': {
+                'non_field_errors': [
+                    ErrorDetail(string='This list may not be empty.', code='empty')],
+            }
+        }
+
+
 class TestNestedListOfListsSerializer:
-    def setup(self):
+    def setup_method(self):
         class TestSerializer(serializers.Serializer):
             integers = serializers.ListSerializer(
                 child=serializers.ListSerializer(
@@ -318,3 +425,353 @@ class TestSerializerPartialUsage:
         assert serializer.is_valid()
         assert serializer.validated_data == {}
         assert serializer.errors == {}
+
+    def test_allow_empty_true(self):
+        class ListSerializer(serializers.Serializer):
+            update_field = serializers.IntegerField()
+            store_field = serializers.IntegerField()
+
+        instance = [
+            {'update_field': 11, 'store_field': 12},
+            {'update_field': 21, 'store_field': 22},
+        ]
+
+        serializer = ListSerializer(instance, data=[], partial=True, many=True)
+        assert serializer.is_valid()
+        assert serializer.validated_data == []
+        assert serializer.errors == []
+
+    def test_update_allow_empty_true(self):
+        class ListSerializer(serializers.Serializer):
+            update_field = serializers.IntegerField()
+            store_field = serializers.IntegerField()
+
+        instance = [
+            {'update_field': 11, 'store_field': 12},
+            {'update_field': 21, 'store_field': 22},
+        ]
+        input_data = [{'update_field': 31}, {'update_field': 41}]
+        updated_data_list = [
+            {'update_field': 31, 'store_field': 12},
+            {'update_field': 41, 'store_field': 22},
+        ]
+
+        serializer = ListSerializer(
+            instance, data=input_data, partial=True, many=True)
+        assert serializer.is_valid()
+
+        for index, data in enumerate(serializer.validated_data):
+            for key, value in data.items():
+                assert value == updated_data_list[index][key]
+
+        assert serializer.errors == []
+
+    def test_allow_empty_false(self):
+        class ListSerializer(serializers.Serializer):
+            update_field = serializers.IntegerField()
+            store_field = serializers.IntegerField()
+
+        instance = [
+            {'update_field': 11, 'store_field': 12},
+            {'update_field': 21, 'store_field': 22},
+        ]
+
+        serializer = ListSerializer(
+            instance, data=[], allow_empty=False, partial=True, many=True)
+        assert not serializer.is_valid()
+        assert serializer.validated_data == []
+        assert len(serializer.errors) == 1
+        assert serializer.errors['non_field_errors'][0] == 'This list may not be empty.'
+
+    def test_update_allow_empty_false(self):
+        class ListSerializer(serializers.Serializer):
+            update_field = serializers.IntegerField()
+            store_field = serializers.IntegerField()
+
+        instance = [
+            {'update_field': 11, 'store_field': 12},
+            {'update_field': 21, 'store_field': 22},
+        ]
+        input_data = [{'update_field': 31}, {'update_field': 41}]
+        updated_data_list = [
+            {'update_field': 31, 'store_field': 12},
+            {'update_field': 41, 'store_field': 22},
+        ]
+
+        serializer = ListSerializer(
+            instance, data=input_data, allow_empty=False, partial=True, many=True)
+        assert serializer.is_valid()
+
+        for index, data in enumerate(serializer.validated_data):
+            for key, value in data.items():
+                assert value == updated_data_list[index][key]
+
+        assert serializer.errors == []
+
+    def test_as_field_allow_empty_true(self):
+        class ListSerializer(serializers.Serializer):
+            update_field = serializers.IntegerField()
+            store_field = serializers.IntegerField()
+
+        class Serializer(serializers.Serializer):
+            extra_field = serializers.IntegerField()
+            list_field = ListSerializer(many=True)
+
+        instance = {
+            'extra_field': 1,
+            'list_field': [
+                {'update_field': 11, 'store_field': 12},
+                {'update_field': 21, 'store_field': 22},
+            ]
+        }
+
+        serializer = Serializer(instance, data={}, partial=True)
+        assert serializer.is_valid()
+        assert serializer.validated_data == {}
+        assert serializer.errors == {}
+
+    def test_update_as_field_allow_empty_true(self):
+        class ListSerializer(serializers.Serializer):
+            update_field = serializers.IntegerField()
+            store_field = serializers.IntegerField()
+
+        class Serializer(serializers.Serializer):
+            extra_field = serializers.IntegerField()
+            list_field = ListSerializer(many=True)
+
+        instance = {
+            'extra_field': 1,
+            'list_field': [
+                {'update_field': 11, 'store_field': 12},
+                {'update_field': 21, 'store_field': 22},
+            ]
+        }
+        input_data_1 = {'extra_field': 2}
+        input_data_2 = {
+            'list_field': [
+                {'update_field': 31},
+                {'update_field': 41},
+            ]
+        }
+
+        # data_1
+        serializer = Serializer(instance, data=input_data_1, partial=True)
+        assert serializer.is_valid()
+        assert len(serializer.validated_data) == 1
+        assert serializer.validated_data['extra_field'] == 2
+        assert serializer.errors == {}
+
+        # data_2
+        serializer = Serializer(instance, data=input_data_2, partial=True)
+        assert serializer.is_valid()
+
+        updated_data_list = [
+            {'update_field': 31, 'store_field': 12},
+            {'update_field': 41, 'store_field': 22},
+        ]
+        for index, data in enumerate(serializer.validated_data['list_field']):
+            for key, value in data.items():
+                assert value == updated_data_list[index][key]
+
+        assert serializer.errors == {}
+
+    def test_as_field_allow_empty_false(self):
+        class ListSerializer(serializers.Serializer):
+            update_field = serializers.IntegerField()
+            store_field = serializers.IntegerField()
+
+        class Serializer(serializers.Serializer):
+            extra_field = serializers.IntegerField()
+            list_field = ListSerializer(many=True, allow_empty=False)
+
+        instance = {
+            'extra_field': 1,
+            'list_field': [
+                {'update_field': 11, 'store_field': 12},
+                {'update_field': 21, 'store_field': 22},
+            ]
+        }
+
+        serializer = Serializer(instance, data={}, partial=True)
+        assert serializer.is_valid()
+        assert serializer.validated_data == {}
+        assert serializer.errors == {}
+
+    def test_update_as_field_allow_empty_false(self):
+        class ListSerializer(serializers.Serializer):
+            update_field = serializers.IntegerField()
+            store_field = serializers.IntegerField()
+
+        class Serializer(serializers.Serializer):
+            extra_field = serializers.IntegerField()
+            list_field = ListSerializer(many=True, allow_empty=False)
+
+        instance = {
+            'extra_field': 1,
+            'list_field': [
+                {'update_field': 11, 'store_field': 12},
+                {'update_field': 21, 'store_field': 22},
+            ]
+        }
+        input_data_1 = {'extra_field': 2}
+        input_data_2 = {
+            'list_field': [
+                {'update_field': 31},
+                {'update_field': 41},
+            ]
+        }
+        updated_data_list = [
+            {'update_field': 31, 'store_field': 12},
+            {'update_field': 41, 'store_field': 22},
+        ]
+
+        # data_1
+        serializer = Serializer(instance, data=input_data_1, partial=True)
+        assert serializer.is_valid()
+        assert serializer.errors == {}
+
+        # data_2
+        serializer = Serializer(instance, data=input_data_2, partial=True)
+        assert serializer.is_valid()
+
+        for index, data in enumerate(serializer.validated_data['list_field']):
+            for key, value in data.items():
+                assert value == updated_data_list[index][key]
+
+        assert serializer.errors == {}
+
+
+class TestEmptyListSerializer:
+    """
+    Tests the behaviour of ListSerializers when there is no data passed to it
+    """
+
+    def setup_method(self):
+        class ExampleListSerializer(serializers.ListSerializer):
+            child = serializers.IntegerField()
+
+        self.Serializer = ExampleListSerializer
+
+    def test_nested_serializer_with_list_json(self):
+        # pass an empty array to the serializer
+        input_data = []
+
+        serializer = self.Serializer(data=input_data)
+
+        assert serializer.is_valid()
+        assert serializer.validated_data == []
+
+    def test_nested_serializer_with_list_multipart(self):
+        # pass an "empty" QueryDict to the serializer (should be the same as an empty array)
+        input_data = QueryDict('')
+        serializer = self.Serializer(data=input_data)
+
+        assert serializer.is_valid()
+        assert serializer.validated_data == []
+
+
+class TestMaxMinLengthListSerializer:
+    """
+    Tests the behaviour of ListSerializers when max_length and min_length are used
+    """
+
+    def setup_method(self):
+        class IntegerSerializer(serializers.Serializer):
+            some_int = serializers.IntegerField()
+
+        class MaxLengthSerializer(serializers.Serializer):
+            many_int = IntegerSerializer(many=True, max_length=5)
+
+        class MinLengthSerializer(serializers.Serializer):
+            many_int = IntegerSerializer(many=True, min_length=3)
+
+        class MaxMinLengthSerializer(serializers.Serializer):
+            many_int = IntegerSerializer(many=True, min_length=3, max_length=5)
+
+        self.MaxLengthSerializer = MaxLengthSerializer
+        self.MinLengthSerializer = MinLengthSerializer
+        self.MaxMinLengthSerializer = MaxMinLengthSerializer
+
+    def test_min_max_length_two_items(self):
+        input_data = {'many_int': [{'some_int': i} for i in range(2)]}
+
+        max_serializer = self.MaxLengthSerializer(data=input_data)
+        min_serializer = self.MinLengthSerializer(data=input_data)
+        max_min_serializer = self.MaxMinLengthSerializer(data=input_data)
+
+        assert max_serializer.is_valid()
+        assert max_serializer.validated_data == input_data
+
+        assert not min_serializer.is_valid()
+
+        assert not max_min_serializer.is_valid()
+
+    def test_min_max_length_four_items(self):
+        input_data = {'many_int': [{'some_int': i} for i in range(4)]}
+
+        max_serializer = self.MaxLengthSerializer(data=input_data)
+        min_serializer = self.MinLengthSerializer(data=input_data)
+        max_min_serializer = self.MaxMinLengthSerializer(data=input_data)
+
+        assert max_serializer.is_valid()
+        assert max_serializer.validated_data == input_data
+
+        assert min_serializer.is_valid()
+        assert min_serializer.validated_data == input_data
+
+        assert max_min_serializer.is_valid()
+        assert min_serializer.validated_data == input_data
+
+    def test_min_max_length_six_items(self):
+        input_data = {'many_int': [{'some_int': i} for i in range(6)]}
+
+        max_serializer = self.MaxLengthSerializer(data=input_data)
+        min_serializer = self.MinLengthSerializer(data=input_data)
+        max_min_serializer = self.MaxMinLengthSerializer(data=input_data)
+
+        assert not max_serializer.is_valid()
+
+        assert min_serializer.is_valid()
+        assert min_serializer.validated_data == input_data
+
+        assert not max_min_serializer.is_valid()
+
+
+@pytest.mark.django_db()
+class TestToRepresentationManagerCheck:
+    """
+    https://github.com/encode/django-rest-framework/issues/8726
+    """
+
+    def setup_method(self):
+        class CustomManagerModelSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = CustomManagerModel
+                fields = '__all__'
+
+        class OneToOneTargetSerializer(serializers.ModelSerializer):
+            my_model = CustomManagerModelSerializer(many=True, source="custommanagermodel_set")
+
+            class Meta:
+                model = OneToOneTarget
+                fields = '__all__'
+                depth = 3
+
+        class NullableOneToOneSourceSerializer(serializers.ModelSerializer):
+            target = OneToOneTargetSerializer()
+
+            class Meta:
+                model = NullableOneToOneSource
+                fields = '__all__'
+
+        self.serializer = NullableOneToOneSourceSerializer
+
+    def test(self):
+        o2o_target = OneToOneTarget.objects.create(name='OneToOneTarget')
+        NullableOneToOneSource.objects.create(
+            name='NullableOneToOneSource',
+            target=o2o_target
+        )
+        queryset = NullableOneToOneSource.objects.all()
+        serializer = self.serializer(queryset, many=True)
+        assert serializer.data

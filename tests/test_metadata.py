@@ -1,5 +1,4 @@
-from __future__ import unicode_literals
-
+import pytest
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.test import TestCase
@@ -8,13 +7,19 @@ from rest_framework import (
     exceptions, metadata, serializers, status, versioning, views
 )
 from rest_framework.renderers import BrowsableAPIRenderer
-from rest_framework.request import Request
 from rest_framework.test import APIRequestFactory
 
-request = Request(APIRequestFactory().options('/'))
+from .models import BasicModel
+
+request = APIRequestFactory().options('/')
 
 
 class TestMetadata:
+
+    def test_determine_metadata_abstract_method_raises_proper_error(self):
+        with pytest.raises(NotImplementedError):
+            metadata.BaseMetadata().determine_metadata(None, None)
+
     def test_metadata(self):
         """
         OPTIONS requests to views should return a valid 200 response.
@@ -77,6 +82,7 @@ class TestMetadata:
                 )
             )
             nested_field = NestedField()
+            uuid_field = serializers.UUIDField(label="UUID field")
 
         class ExampleView(views.APIView):
             """Example view."""
@@ -165,7 +171,13 @@ class TestMetadata:
                                 'label': 'B'
                             }
                         }
-                    }
+                    },
+                    'uuid_field': {
+                        "type": "string",
+                        "required": True,
+                        "read_only": False,
+                        "label": "UUID field",
+                    },
                 }
             }
         }
@@ -200,7 +212,7 @@ class TestMetadata:
         view = ExampleView.as_view()
         response = view(request=request)
         assert response.status_code == status.HTTP_200_OK
-        assert list(response.data['actions'].keys()) == ['PUT']
+        assert list(response.data['actions']) == ['PUT']
 
     def test_object_permissions(self):
         """
@@ -261,10 +273,63 @@ class TestMetadata:
         view = ExampleView.as_view(versioning_class=scheme)
         view(request=request)
 
+    def test_dont_show_hidden_fields(self):
+        """
+        HiddenField shouldn't show up in SimpleMetadata at all.
+        """
+        class ExampleSerializer(serializers.Serializer):
+            integer_field = serializers.IntegerField(max_value=10)
+            hidden_field = serializers.HiddenField(default=1)
+
+        class ExampleView(views.APIView):
+            """Example view."""
+            def post(self, request):
+                pass
+
+            def get_serializer(self):
+                return ExampleSerializer()
+
+        view = ExampleView.as_view()
+        response = view(request=request)
+        assert response.status_code == status.HTTP_200_OK
+        assert set(response.data['actions']['POST'].keys()) == {'integer_field'}
+
+    def test_list_serializer_metadata_returns_info_about_fields_of_child_serializer(self):
+        class ExampleSerializer(serializers.Serializer):
+            integer_field = serializers.IntegerField(max_value=10)
+            char_field = serializers.CharField(required=False)
+
+        class ExampleListSerializer(serializers.ListSerializer):
+            pass
+
+        options = metadata.SimpleMetadata()
+        child_serializer = ExampleSerializer()
+        list_serializer = ExampleListSerializer(child=child_serializer)
+        assert options.get_serializer_info(list_serializer) == options.get_serializer_info(child_serializer)
+
+
+class TestSimpleMetadataFieldInfo(TestCase):
     def test_null_boolean_field_info_type(self):
         options = metadata.SimpleMetadata()
-        field_info = options.get_field_info(serializers.NullBooleanField())
+        field_info = options.get_field_info(serializers.BooleanField(
+            allow_null=True))
         assert field_info['type'] == 'boolean'
+
+    def test_related_field_choices(self):
+        options = metadata.SimpleMetadata()
+        BasicModel.objects.create()
+        with self.assertNumQueries(0):
+            field_info = options.get_field_info(
+                serializers.RelatedField(queryset=BasicModel.objects.all())
+            )
+        assert 'choices' not in field_info
+
+    def test_decimal_field_info_type(self):
+        options = metadata.SimpleMetadata()
+        field_info = options.get_field_info(serializers.DecimalField(max_digits=18, decimal_places=4))
+        assert field_info['type'] == 'decimal'
+        assert field_info['max_digits'] == 18
+        assert field_info['decimal_places'] == 4
 
 
 class TestModelSerializerMetadata(TestCase):
@@ -287,6 +352,7 @@ class TestModelSerializerMetadata(TestCase):
 
             class Meta:
                 model = Parent
+                fields = '__all__'
 
         class ExampleView(views.APIView):
             """Example view."""

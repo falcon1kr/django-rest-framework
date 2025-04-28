@@ -2,145 +2,65 @@
 The `compat` module provides support for backwards compatibility with older
 versions of Django/Python, and compatibility wrappers around optional packages.
 """
-
-# flake8: noqa
-from __future__ import unicode_literals
-
 import django
-from django.conf import settings
-from django.db import connection, transaction
-from django.utils import six
+from django.db import models
+from django.db.models.constants import LOOKUP_SEP
+from django.db.models.sql.query import Node
 from django.views.generic import View
-
-try:
-    import importlib  # Available in Python 3.1+
-except ImportError:
-    from django.utils import importlib  # Will be removed in Django 1.9
-
-
-def unicode_repr(instance):
-    # Get the repr of an instance, but ensure it is a unicode string
-    # on both python 3 (already the case) and 2 (not the case).
-    if six.PY2:
-        return repr(instance).decode('utf-8')
-    return repr(instance)
-
-
-def unicode_to_repr(value):
-    # Coerce a unicode string to the correct repr return type, depending on
-    # the Python version. We wrap all our `__repr__` implementations with
-    # this and then use unicode throughout internally.
-    if six.PY2:
-        return value.encode('utf-8')
-    return value
 
 
 def unicode_http_header(value):
     # Coerce HTTP header value to unicode.
-    if isinstance(value, six.binary_type):
+    if isinstance(value, bytes):
         return value.decode('iso-8859-1')
     return value
 
 
-def total_seconds(timedelta):
-    # TimeDelta.total_seconds() is only available in Python 2.7
-    if hasattr(timedelta, 'total_seconds'):
-        return timedelta.total_seconds()
-    else:
-        return (timedelta.days * 86400.0) + float(timedelta.seconds) + (timedelta.microseconds / 1000000.0)
-
-
-def distinct(queryset, base):
-    if settings.DATABASES[queryset.db]["ENGINE"] == "django.db.backends.oracle":
-        # distinct analogue for Oracle users
-        return base.filter(pk__in=set(queryset.values_list('pk', flat=True)))
-    return queryset.distinct()
-
-
-# contrib.postgres only supported from 1.8 onwards.
+# django.contrib.postgres requires psycopg2
 try:
     from django.contrib.postgres import fields as postgres_fields
 except ImportError:
     postgres_fields = None
 
 
-# JSONField is only supported from 1.9 onwards
+# coreapi is required for CoreAPI schema generation
 try:
-    from django.contrib.postgres.fields import JSONField
+    import coreapi
 except ImportError:
-    JSONField = None
+    coreapi = None
 
-
-# django-filter is optional
+# uritemplate is required for OpenAPI and CoreAPI schema generation
 try:
-    import django_filters
+    import uritemplate
 except ImportError:
-    django_filters = None
+    uritemplate = None
 
 
-# django-crispy-forms is optional
+# coreschema is optional
 try:
-    import crispy_forms
+    import coreschema
 except ImportError:
-    crispy_forms = None
+    coreschema = None
 
 
-if django.VERSION >= (1, 6):
-    def clean_manytomany_helptext(text):
-        return text
-else:
-    # Up to version 1.5 many to many fields automatically suffix
-    # the `help_text` attribute with hardcoded text.
-    def clean_manytomany_helptext(text):
-        if text.endswith(' Hold down "Control", or "Command" on a Mac, to select more than one.'):
-            text = text[:-69]
-        return text
-
-
-# Django-guardian is optional. Import only if guardian is in INSTALLED_APPS
-# Fixes (#1712). We keep the try/except for the test suite.
-guardian = None
+# pyyaml is optional
 try:
-    if 'guardian' in settings.INSTALLED_APPS:
-        import guardian
-        import guardian.shortcuts  # Fixes #1624
+    import yaml
 except ImportError:
-    pass
+    yaml = None
+
+# inflection is optional
+try:
+    import inflection
+except ImportError:
+    inflection = None
 
 
-# MinValueValidator, MaxValueValidator et al. only accept `message` in 1.8+
-if django.VERSION >= (1, 8):
-    from django.core.validators import MinValueValidator, MaxValueValidator
-    from django.core.validators import MinLengthValidator, MaxLengthValidator
-else:
-    from django.core.validators import MinValueValidator as DjangoMinValueValidator
-    from django.core.validators import MaxValueValidator as DjangoMaxValueValidator
-    from django.core.validators import MinLengthValidator as DjangoMinLengthValidator
-    from django.core.validators import MaxLengthValidator as DjangoMaxLengthValidator
-
-
-    class MinValueValidator(DjangoMinValueValidator):
-        def __init__(self, *args, **kwargs):
-            self.message = kwargs.pop('message', self.message)
-            super(MinValueValidator, self).__init__(*args, **kwargs)
-
-
-    class MaxValueValidator(DjangoMaxValueValidator):
-        def __init__(self, *args, **kwargs):
-            self.message = kwargs.pop('message', self.message)
-            super(MaxValueValidator, self).__init__(*args, **kwargs)
-
-
-    class MinLengthValidator(DjangoMinLengthValidator):
-        def __init__(self, *args, **kwargs):
-            self.message = kwargs.pop('message', self.message)
-            super(MinLengthValidator, self).__init__(*args, **kwargs)
-
-
-    class MaxLengthValidator(DjangoMaxLengthValidator):
-        def __init__(self, *args, **kwargs):
-            self.message = kwargs.pop('message', self.message)
-            super(MaxLengthValidator, self).__init__(*args, **kwargs)
+# requests is optional
+try:
+    import requests
+except ImportError:
+    requests = None
 
 
 # PATCH method is not implemented by Django
@@ -148,61 +68,142 @@ if 'patch' not in View.http_method_names:
     View.http_method_names = View.http_method_names + ['patch']
 
 
-# Markdown is optional
+# Markdown is optional (version 3.0+ required)
 try:
     import markdown
 
+    HEADERID_EXT_PATH = 'markdown.extensions.toc'
+    LEVEL_PARAM = 'baselevel'
 
     def apply_markdown(text):
         """
         Simple wrapper around :func:`markdown.markdown` to set the base level
         of '#' style headers to <h2>.
         """
-
-        extensions = ['headerid(level=2)']
-        safe_mode = False
-        md = markdown.Markdown(extensions=extensions, safe_mode=safe_mode)
+        extensions = [HEADERID_EXT_PATH]
+        extension_configs = {
+            HEADERID_EXT_PATH: {
+                LEVEL_PARAM: '2'
+            }
+        }
+        md = markdown.Markdown(
+            extensions=extensions, extension_configs=extension_configs
+        )
+        md_filter_add_syntax_highlight(md)
         return md.convert(text)
 except ImportError:
     apply_markdown = None
+    markdown = None
+
+
+try:
+    import pygments
+    from pygments.formatters import HtmlFormatter
+    from pygments.lexers import TextLexer, get_lexer_by_name
+
+    def pygments_highlight(text, lang, style):
+        lexer = get_lexer_by_name(lang, stripall=False)
+        formatter = HtmlFormatter(nowrap=True, style=style)
+        return pygments.highlight(text, lexer, formatter)
+
+    def pygments_css(style):
+        formatter = HtmlFormatter(style=style)
+        return formatter.get_style_defs('.highlight')
+
+except ImportError:
+    pygments = None
+
+    def pygments_highlight(text, lang, style):
+        return text
+
+    def pygments_css(style):
+        return None
+
+if markdown is not None and pygments is not None:
+    # starting from this blogpost and modified to support current markdown extensions API
+    # https://zerokspot.com/weblog/2008/06/18/syntax-highlighting-in-markdown-with-pygments/
+
+    import re
+
+    from markdown.preprocessors import Preprocessor
+
+    class CodeBlockPreprocessor(Preprocessor):
+        pattern = re.compile(
+            r'^\s*``` *([^\n]+)\n(.+?)^\s*```', re.M | re.S)
+
+        formatter = HtmlFormatter()
+
+        def run(self, lines):
+            def repl(m):
+                try:
+                    lexer = get_lexer_by_name(m.group(1))
+                except (ValueError, NameError):
+                    lexer = TextLexer()
+                code = m.group(2).replace('\t', '    ')
+                code = pygments.highlight(code, lexer, self.formatter)
+                code = code.replace('\n\n', '\n&nbsp;\n').replace('\n', '<br />').replace('\\@', '@')
+                return '\n\n%s\n\n' % code
+            ret = self.pattern.sub(repl, "\n".join(lines))
+            return ret.split("\n")
+
+    def md_filter_add_syntax_highlight(md):
+        md.preprocessors.register(CodeBlockPreprocessor(), 'highlight', 40)
+        return True
+else:
+    def md_filter_add_syntax_highlight(md):
+        return False
+
+
+if django.VERSION >= (5, 1):
+    # Django 5.1+: use the stock ip_address_validators function
+    # Note: Before Django 5.1, ip_address_validators returns a tuple containing
+    #       1) the list of validators and 2) the error message. Starting from
+    #       Django 5.1 ip_address_validators only returns the list of validators
+    from django.core.validators import ip_address_validators
+
+    def get_referenced_base_fields_from_q(q):
+        return q.referenced_base_fields
+
+else:
+    # Django <= 5.1: create a compatibility shim for ip_address_validators
+    from django.core.validators import \
+        ip_address_validators as _ip_address_validators
+
+    def ip_address_validators(protocol, unpack_ipv4):
+        return _ip_address_validators(protocol, unpack_ipv4)[0]
+
+    # Django < 5.1: create a compatibility shim for Q.referenced_base_fields
+    # https://github.com/django/django/blob/5.1a1/django/db/models/query_utils.py#L179
+    def _get_paths_from_expression(expr):
+        if isinstance(expr, models.F):
+            yield expr.name
+        elif hasattr(expr, 'flatten'):
+            for child in expr.flatten():
+                if isinstance(child, models.F):
+                    yield child.name
+                elif isinstance(child, models.Q):
+                    yield from _get_children_from_q(child)
+
+    def _get_children_from_q(q):
+        for child in q.children:
+            if isinstance(child, Node):
+                yield from _get_children_from_q(child)
+            elif isinstance(child, tuple):
+                lhs, rhs = child
+                yield lhs
+                if hasattr(rhs, 'resolve_expression'):
+                    yield from _get_paths_from_expression(rhs)
+            elif hasattr(child, 'resolve_expression'):
+                yield from _get_paths_from_expression(child)
+
+    def get_referenced_base_fields_from_q(q):
+        return {
+            child.split(LOOKUP_SEP, 1)[0] for child in _get_children_from_q(q)
+        }
 
 
 # `separators` argument to `json.dumps()` differs between 2.x and 3.x
-# See: http://bugs.python.org/issue22767
-if six.PY3:
-    SHORT_SEPARATORS = (',', ':')
-    LONG_SEPARATORS = (', ', ': ')
-    INDENT_SEPARATORS = (',', ': ')
-else:
-    SHORT_SEPARATORS = (b',', b':')
-    LONG_SEPARATORS = (b', ', b': ')
-    INDENT_SEPARATORS = (b',', b': ')
-
-if django.VERSION >= (1, 8):
-    from django.db.models import DurationField
-    from django.utils.dateparse import parse_duration
-    from django.utils.duration import duration_string
-else:
-    DurationField = duration_string = parse_duration = None
-
-try:
-    # DecimalValidator is unavailable in Django < 1.9
-    from django.core.validators import DecimalValidator
-except ImportError:
-    DecimalValidator = None
-
-def set_rollback():
-    if hasattr(transaction, 'set_rollback'):
-        if connection.settings_dict.get('ATOMIC_REQUESTS', False):
-            # If running in >=1.6 then mark a rollback as required,
-            # and allow it to be handled by Django.
-            if connection.in_atomic_block:
-                transaction.set_rollback(True)
-    elif transaction.is_managed():
-        # Otherwise handle it explicitly if in managed mode.
-        if transaction.is_dirty():
-            transaction.rollback()
-        transaction.leave_transaction_management()
-    else:
-        # transaction not managed
-        pass
+# See: https://bugs.python.org/issue22767
+SHORT_SEPARATORS = (',', ':')
+LONG_SEPARATORS = (', ', ': ')
+INDENT_SEPARATORS = (',', ': ')

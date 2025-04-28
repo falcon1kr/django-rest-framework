@@ -1,4 +1,7 @@
-source: throttling.py
+---
+source:
+    - throttling.py
+---
 
 # Throttling
 
@@ -16,6 +19,10 @@ Multiple throttles can also be used if you want to impose both burst throttling 
 
 Throttles do not necessarily only refer to rate-limiting requests.  For example a storage service might also need to throttle against bandwidth, and a paid data service might want to throttle against a certain number of a records being accessed.
 
+**The application-level throttling that REST framework provides should not be considered a security measure or protection against brute forcing or denial-of-service attacks. Deliberately malicious actors will always be able to spoof IP origins. In addition to this, the built-in throttling implementations are implemented using Django's cache framework, and use non-atomic operations to determine the request rate, which may sometimes result in some fuzziness.
+
+The application-level throttling provided by REST framework is intended for implementing policies such as different business tiers and basic protections against service over-use.**
+
 ## How throttling is determined
 
 As with permissions and authentication, throttling in REST framework is always defined as a list of classes.
@@ -28,27 +35,27 @@ If any throttle check fails an `exceptions.Throttled` exception will be raised, 
 The default throttling policy may be set globally, using the `DEFAULT_THROTTLE_CLASSES` and `DEFAULT_THROTTLE_RATES` settings.  For example.
 
     REST_FRAMEWORK = {
-        'DEFAULT_THROTTLE_CLASSES': (
+        'DEFAULT_THROTTLE_CLASSES': [
             'rest_framework.throttling.AnonRateThrottle',
             'rest_framework.throttling.UserRateThrottle'
-        ),
+        ],
         'DEFAULT_THROTTLE_RATES': {
             'anon': '100/day',
             'user': '1000/day'
         }
     }
 
-The rate descriptions used in `DEFAULT_THROTTLE_RATES` may include `second`, `minute`, `hour` or `day` as the throttle period.
+The rates used in `DEFAULT_THROTTLE_RATES` can be specified over a period of second, minute, hour or day. The period must be specified after the `/` separator using `s`, `m`, `h` or `d`, respectively. For increased clarity, extended units such as `second`, `minute`, `hour`, `day` or even abbreviations like `sec`, `min`, `hr` are allowed, as only the first character is relevant to identify the rate.
 
 You can also set the throttling policy on a per-view or per-viewset basis,
-using the `APIView` class based views.
+using the `APIView` class-based views.
 
-	from rest_framework.response import Response
+    from rest_framework.response import Response
     from rest_framework.throttling import UserRateThrottle
-	from rest_framework.views import APIView
+    from rest_framework.views import APIView
 
     class ExampleView(APIView):
-        throttle_classes = (UserRateThrottle,)
+        throttle_classes = [UserRateThrottle]
 
         def get(self, request, format=None):
             content = {
@@ -56,7 +63,7 @@ using the `APIView` class based views.
             }
             return Response(content)
 
-Or, if you're using the `@api_view` decorator with function based views.
+If you're using the `@api_view` decorator with function based views you can use the following decorator.
 
     @api_view(['GET'])
     @throttle_classes([UserRateThrottle])
@@ -66,15 +73,25 @@ Or, if you're using the `@api_view` decorator with function based views.
         }
         return Response(content)
 
-## How clients are identified
+It's also possible to set throttle classes for routes that are created using the `@action` decorator.
+Throttle classes set in this way will override any viewset level class settings.
 
-The `X-Forwarded-For` and `Remote-Addr` HTTP headers are used to uniquely identify client IP addresses for throttling.  If the `X-Forwarded-For` header is present then it will be used, otherwise the value of the `Remote-Addr` header will be used.
+    @action(detail=True, methods=["post"], throttle_classes=[UserRateThrottle])
+    def example_adhoc_method(request, pk=None):
+        content = {
+            'status': 'request was permitted'
+        }
+        return Response(content)
 
-If you need to strictly identify unique client IP addresses, you'll need to first configure the number of application proxies that the API runs behind by setting the `NUM_PROXIES` setting.  This setting should be an integer of zero or more.  If set to non-zero then the client IP will be identified as being the last IP address in the `X-Forwarded-For` header, once any application proxy IP addresses have first been excluded.  If set to zero, then the `Remote-Addr` header will always be used as the identifying IP address.
+## How clients are identified
 
-It is important to understand that if you configure the `NUM_PROXIES` setting, then all clients behind a unique [NAT'd](http://en.wikipedia.org/wiki/Network_address_translation) gateway will be treated as a single client.
+The `X-Forwarded-For` HTTP header and `REMOTE_ADDR` WSGI variable are used to uniquely identify client IP addresses for throttling.  If the `X-Forwarded-For` header is present then it will be used, otherwise the value of the `REMOTE_ADDR` variable from the WSGI environment will be used.
 
-Further context on how the `X-Forwarded-For` header works, and identifying a remote client IP can be [found here][identifing-clients].
+If you need to strictly identify unique client IP addresses, you'll need to first configure the number of application proxies that the API runs behind by setting the `NUM_PROXIES` setting.  This setting should be an integer of zero or more.  If set to non-zero then the client IP will be identified as being the last IP address in the `X-Forwarded-For` header, once any application proxy IP addresses have first been excluded.  If set to zero, then the `REMOTE_ADDR` value will always be used as the identifying IP address.
+
+It is important to understand that if you configure the `NUM_PROXIES` setting, then all clients behind a unique [NAT'd](https://en.wikipedia.org/wiki/Network_address_translation) gateway will be treated as a single client.
+
+Further context on how the `X-Forwarded-For` header works, and identifying a remote client IP can be [found here][identifying-clients].
 
 ## Setting up the cache
 
@@ -82,10 +99,18 @@ The throttle classes provided by REST framework use Django's cache backend.  You
 
 If you need to use a cache other than `'default'`, you can do so by creating a custom throttle class and setting the `cache` attribute.  For example:
 
+    from django.core.cache import caches
+
     class CustomAnonRateThrottle(AnonRateThrottle):
-        cache = get_cache('alternate')
+        cache = caches['alternate']
 
 You'll need to remember to also set your custom throttle class in the `'DEFAULT_THROTTLE_CLASSES'` settings key, or using the `throttle_classes` view attribute.
+
+## A note on concurrency
+
+The built-in throttle implementations are open to [race conditions][race], so under high concurrency they may allow a few extra requests through.
+
+If your project relies on guaranteeing the number of requests during concurrent requests, you will need to implement your own throttle class.
 
 ---
 
@@ -124,10 +149,10 @@ For example, multiple user throttle rates could be implemented by using the foll
 ...and the following settings.
 
     REST_FRAMEWORK = {
-        'DEFAULT_THROTTLE_CLASSES': (
+        'DEFAULT_THROTTLE_CLASSES': [
             'example.throttles.BurstRateThrottle',
             'example.throttles.SustainedRateThrottle'
-        ),
+        ],
         'DEFAULT_THROTTLE_RATES': {
             'burst': '60/min',
             'sustained': '1000/day'
@@ -159,9 +184,9 @@ For example, given the following views...
 ...and the following settings.
 
     REST_FRAMEWORK = {
-        'DEFAULT_THROTTLE_CLASSES': (
+        'DEFAULT_THROTTLE_CLASSES': [
             'rest_framework.throttling.ScopedRateThrottle',
-        ),
+        ],
         'DEFAULT_THROTTLE_RATES': {
             'contacts': '1000/day',
             'uploads': '20/day'
@@ -184,12 +209,15 @@ If the `.wait()` method is implemented and the request is throttled, then a `Ret
 
 The following is an example of a rate throttle, that will randomly throttle 1 in every 10 requests.
 
+    import random
+
     class RandomRateThrottle(throttling.BaseThrottle):
         def allow_request(self, request, view):
-            return random.randint(1, 10) == 1
+            return random.randint(1, 10) != 1
 
-[cite]: https://dev.twitter.com/docs/error-codes-responses
+[cite]: https://developer.twitter.com/en/docs/basics/rate-limiting
 [permissions]: permissions.md
-[identifing-clients]: http://oxpedia.org/wiki/index.php?title=AppSuite:Grizzly#Multiple_Proxies_in_front_of_the_cluster
-[cache-setting]: https://docs.djangoproject.com/en/dev/ref/settings/#caches
-[cache-docs]: https://docs.djangoproject.com/en/dev/topics/cache/#setting-up-the-cache
+[identifying-clients]: http://oxpedia.org/wiki/index.php?title=AppSuite:Grizzly#Multiple_Proxies_in_front_of_the_cluster
+[cache-setting]: https://docs.djangoproject.com/en/stable/ref/settings/#caches
+[cache-docs]: https://docs.djangoproject.com/en/stable/topics/cache/#setting-up-the-cache
+[race]: https://en.wikipedia.org/wiki/Race_condition#Data_race

@@ -25,17 +25,15 @@ Using numeric HTTP status codes in your views doesn't always make for obvious re
 REST framework provides two wrappers you can use to write API views.
 
 1. The `@api_view` decorator for working with function based views.
-2. The `APIView` class for working with class based views.
+2. The `APIView` class for working with class-based views.
 
 These wrappers provide a few bits of functionality such as making sure you receive `Request` instances in your view, and adding context to `Response` objects so that content negotiation can be performed.
 
-The wrappers also provide behaviour such as returning `405 Method Not Allowed` responses when appropriate, and handling any `ParseError` exception that occurs when accessing `request.data` with malformed input.
+The wrappers also provide behavior such as returning `405 Method Not Allowed` responses when appropriate, and handling any `ParseError` exceptions that occur when accessing `request.data` with malformed input.
 
 ## Pulling it all together
 
-Okay, let's go ahead and start using these new components to write a few views.
-
-We don't need our `JSONResponse` class in `views.py` anymore, so go ahead and delete that.  Once that's done we can start refactoring our views slightly.
+Okay, let's go ahead and start using these new components to refactor our views slightly.
 
     from rest_framework import status
     from rest_framework.decorators import api_view
@@ -47,7 +45,7 @@ We don't need our `JSONResponse` class in `views.py` anymore, so go ahead and de
     @api_view(['GET', 'POST'])
     def snippet_list(request):
         """
-        List all snippets, or create a new snippet.
+        List all code snippets, or create a new snippet.
         """
         if request.method == 'GET':
             snippets = Snippet.objects.all()
@@ -68,7 +66,7 @@ Here is the view for an individual snippet, in the `views.py` module.
     @api_view(['GET', 'PUT', 'DELETE'])
     def snippet_detail(request, pk):
         """
-        Retrieve, update or delete a snippet instance.
+        Retrieve, update or delete a code snippet.
         """
         try:
             snippet = Snippet.objects.get(pk=pk)
@@ -96,7 +94,7 @@ Notice that we're no longer explicitly tying our requests or responses to a give
 
 ## Adding optional format suffixes to our URLs
 
-To take advantage of the fact that our responses are no longer hardwired to a single content type let's add support for format suffixes to our API endpoints.  Using format suffixes gives us URLs that explicitly refer to a given format, and means our API will be able to handle URLs such as [http://example.com/api/items/4/.json][json-url].
+To take advantage of the fact that our responses are no longer hardwired to a single content type let's add support for format suffixes to our API endpoints.  Using format suffixes gives us URLs that explicitly refer to a given format, and means our API will be able to handle URLs such as [http://example.com/api/items/4.json][json-url].
 
 Start by adding a `format` keyword argument to both of the views, like so.
 
@@ -106,15 +104,15 @@ and
 
     def snippet_detail(request, pk, format=None):
 
-Now update the `urls.py` file slightly, to append a set of `format_suffix_patterns` in addition to the existing URLs.
+Now update the `snippets/urls.py` file slightly, to append a set of `format_suffix_patterns` in addition to the existing URLs.
 
-    from django.conf.urls import url
+    from django.urls import path
     from rest_framework.urlpatterns import format_suffix_patterns
     from snippets import views
 
     urlpatterns = [
-        url(r'^snippets/$', views.snippet_list),
-        url(r'^snippets/(?P<pk>[0-9]+)$', views.snippet_detail),
+        path('snippets/', views.snippet_list),
+        path('snippets/<int:pk>/', views.snippet_detail),
     ]
 
     urlpatterns = format_suffix_patterns(urlpatterns)
@@ -143,7 +141,7 @@ We can get a list of all of the snippets, as before.
       {
         "id": 2,
         "title": "",
-        "code": "print \"hello, world\"\n",
+        "code": "print(\"hello, world\")\n",
         "linenos": false,
         "language": "python",
         "style": "friendly"
@@ -163,28 +161,30 @@ Or by appending a format suffix:
 Similarly, we can control the format of the request that we send, using the `Content-Type` header.
 
     # POST using form data
-    http --form POST http://127.0.0.1:8000/snippets/ code="print 123"
+    http --form POST http://127.0.0.1:8000/snippets/ code="print(123)"
 
     {
       "id": 3,
       "title": "",
-      "code": "print 123",
+      "code": "print(123)",
       "linenos": false,
       "language": "python",
       "style": "friendly"
     }
 
     # POST using JSON
-    http --json POST http://127.0.0.1:8000/snippets/ code="print 456"
+    http --json POST http://127.0.0.1:8000/snippets/ code="print(456)"
 
     {
         "id": 4,
         "title": "",
-        "code": "print 456",
+        "code": "print(456)",
         "linenos": false,
         "language": "python",
         "style": "friendly"
     }
+
+If you add a `--debug` switch to the `http` requests above, you will be able to see the request type in request headers.
 
 Now go and open the API in a web browser, by visiting [http://127.0.0.1:8000/snippets/][devserver].
 
@@ -198,9 +198,9 @@ See the [browsable api][browsable-api] topic for more information about the brow
 
 ## What's next?
 
-In [tutorial part 3][tut-3], we'll start using class based views, and see how generic views reduce the amount of code we need to write.
+In [tutorial part 3][tut-3], we'll start using class-based views, and see how generic views reduce the amount of code we need to write.
 
-[json-url]: http://example.com/api/items/4/.json
+[json-url]: http://example.com/api/items/4.json
 [devserver]: http://127.0.0.1:8000/snippets/
 [browsable-api]: ../topics/browsable-api.md
 [tut-1]: 1-serialization.md

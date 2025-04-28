@@ -1,5 +1,8 @@
-source: mixins.py
-        generics.py
+---
+source:
+    - mixins.py
+    - generics.py
+---
 
 # Generic views
 
@@ -7,7 +10,7 @@ source: mixins.py
 >
 > &mdash; [Django Documentation][cite]
 
-One of the key benefits of class based views is the way they allow you to compose bits of reusable behavior.  REST framework takes advantage of this by providing a number of pre-built views that provide for commonly used patterns.
+One of the key benefits of class-based views is the way they allow you to compose bits of reusable behavior.  REST framework takes advantage of this by providing a number of pre-built views that provide for commonly used patterns.
 
 The generic views provided by REST framework allow you to quickly build API views that map closely to your database models.
 
@@ -25,23 +28,14 @@ Typically when using the generic views, you'll override the view, and set severa
     class UserList(generics.ListCreateAPIView):
         queryset = User.objects.all()
         serializer_class = UserSerializer
-        permission_classes = (IsAdminUser,)
-        paginate_by = 100
+        permission_classes = [IsAdminUser]
 
 For more complex cases you might also want to override various methods on the view class.  For example.
 
     class UserList(generics.ListCreateAPIView):
         queryset = User.objects.all()
         serializer_class = UserSerializer
-        permission_classes = (IsAdminUser,)
-
-        def get_paginate_by(self):
-            """
-            Use smaller pagination for HTML representations.
-            """
-            if self.request.accepted_renderer.format == 'html':
-                return 20
-            return 100
+        permission_classes = [IsAdminUser]
 
         def list(self, request):
             # Note the use of `get_queryset()` instead of `self.queryset`
@@ -51,7 +45,7 @@ For more complex cases you might also want to override various methods on the vi
 
 For very simple cases you might want to pass through any class attributes using the `.as_view()` method.  For example, your URLconf might include something like the following entry:
 
-    url(r'^/users/', ListCreateAPIView.as_view(queryset=User.objects.all(), serializer_class=UserSerializer), name='user-list')
+    path('users/', ListCreateAPIView.as_view(queryset=User.objects.all(), serializer_class=UserSerializer), name='user-list')
 
 ---
 
@@ -71,16 +65,14 @@ The following attributes control the basic view behavior.
 
 * `queryset` - The queryset that should be used for returning objects from this view.  Typically, you must either set this attribute, or override the `get_queryset()` method. If you are overriding a view method, it is important that you call `get_queryset()` instead of accessing this property directly, as `queryset` will get evaluated once, and those results will be cached for all subsequent requests.
 * `serializer_class` - The serializer class that should be used for validating and deserializing input, and for serializing output.  Typically, you must either set this attribute, or override the `get_serializer_class()` method.
-* `lookup_field` - The model field that should be used to for performing object lookup of individual model instances.  Defaults to `'pk'`.  Note that when using hyperlinked APIs you'll need to ensure that *both* the API views *and* the serializer classes set the lookup fields if you need to use a custom value.
+* `lookup_field` - The model field that should be used for performing object lookup of individual model instances.  Defaults to `'pk'`.  Note that when using hyperlinked APIs you'll need to ensure that *both* the API views *and* the serializer classes set the lookup fields if you need to use a custom value.
 * `lookup_url_kwarg` - The URL keyword argument that should be used for object lookup.  The URL conf should include a keyword argument corresponding to this value.  If unset this defaults to using the same value as `lookup_field`.
 
 **Pagination**:
 
 The following attributes are used to control pagination when used with list views.
 
-* `pagination_class` - The pagination class that should be used when paginating list results. Defaults to the same value as the `DEFAULT_PAGINATION_CLASS` setting, which is `'rest_framework.pagination.PageNumberPagination'`.
-
-Note that usage of the `paginate_by`, `paginate_by_param` and `page_kwarg` attributes are now pending deprecation. The `pagination_serializer_class` attribute and `DEFAULT_PAGINATION_SERIALIZER_CLASS` setting have been removed completely. Pagination settings should instead be controlled by overriding a pagination class and setting any configuration attributes there. See the pagination documentation for more details.
+* `pagination_class` - The pagination class that should be used when paginating list results. Defaults to the same value as the `DEFAULT_PAGINATION_CLASS` setting, which is `'rest_framework.pagination.PageNumberPagination'`. Setting `pagination_class=None` will disable pagination on this view.
 
 **Filtering**:
 
@@ -104,6 +96,12 @@ For example:
         user = self.request.user
         return user.accounts.all()
 
+---
+
+**Note:** If the `serializer_class` used in the generic view spans orm relations, leading to an n+1 problem, you could optimize your queryset in this method using `select_related` and `prefetch_related`. To get more information about n+1 problem and use cases of the mentioned methods refer to related section in [django documentation][django-docs-select-related].
+
+---
+
 #### `get_object(self)`
 
 Returns an object instance that should be used for detail views.  Defaults to using the `lookup_field` parameter to filter the base queryset.
@@ -124,23 +122,23 @@ For example:
 
 Note that if your API doesn't include any object level permissions, you may optionally exclude the `self.check_object_permissions`, and simply return the object from the `get_object_or_404` lookup.
 
-#### `filter_queryset(self, queryset)`       
-       
-Given a queryset, filter it with whichever filter backends are in use, returning a new queryset.   
-        
-For example:       
-       
+#### `filter_queryset(self, queryset)`
+
+Given a queryset, filter it with whichever filter backends are in use, returning a new queryset.
+
+For example:
+
     def filter_queryset(self, queryset):
-        filter_backends = (CategoryFilter,)
-        
+        filter_backends = [CategoryFilter]
+
         if 'geo_route' in self.request.query_params:
-            filter_backends = (GeoRouteFilter, CategoryFilter)
+            filter_backends = [GeoRouteFilter, CategoryFilter]
         elif 'geo_point' in self.request.query_params:
-            filter_backends = (GeoPointFilter, CategoryFilter)
-        
+            filter_backends = [GeoPointFilter, CategoryFilter]
+
         for backend in list(filter_backends):
             queryset = backend().filter_queryset(self.request, queryset, view=self)
-        
+
         return queryset
 
 #### `get_serializer_class(self)`
@@ -155,19 +153,6 @@ For example:
         if self.request.user.is_staff:
             return FullAccountSerializer
         return BasicAccountSerializer
-
-#### `get_paginate_by(self)`
-
-Returns the page size to use with pagination.  By default this uses the `paginate_by` attribute, and may be overridden by the client if the `paginate_by_param` attribute is set.
-
-You may want to override this method to provide more complex behavior, such as modifying page sizes based on the media type of the response.
-
-For example:
-
-    def get_paginate_by(self):
-        if self.request.accepted_renderer.format == 'html':
-            return 20
-        return 100
 
 **Save and deletion hooks**:
 
@@ -195,8 +180,6 @@ You can also use these hooks to provide additional validation, by raising a `Val
         if queryset.exists():
             raise ValidationError('You have already signed up')
         serializer.save(user=self.request.user)
-
-**Note**: These methods replace the old-style version 2.x `pre_save`, `post_save`, `pre_delete` and `post_delete` methods, which are no longer available.
 
 **Other methods**:
 
@@ -234,7 +217,7 @@ If the request data provided for creating the object was invalid, a `400 Bad Req
 
 Provides a `.retrieve(request, *args, **kwargs)` method, that implements returning an existing model instance in a response.
 
-If an object can be retrieved this returns a `200 OK` response, with a serialized representation of the object as the body of the response.  Otherwise it will return a `404 Not Found`.
+If an object can be retrieved this returns a `200 OK` response, with a serialized representation of the object as the body of the response.  Otherwise, it will return a `404 Not Found`.
 
 ## UpdateModelMixin
 
@@ -243,8 +226,6 @@ Provides a `.update(request, *args, **kwargs)` method, that implements updating 
 Also provides a `.partial_update(request, *args, **kwargs)` method, which is similar to the `update` method, except that all fields for the update will be optional.  This allows support for HTTP `PATCH` requests.
 
 If an object is updated this returns a `200 OK` response, with a serialized representation of the object as the body of the response.
-
-If an object is created, for example when making a `DELETE` request followed by a `PUT` request to the same URL, this returns a `201 Created` response, with a serialized representation of the object as the body of the response.
 
 If the request data provided for updating the object was invalid, a `400 Bad Request` response will be returned, with the error details as the body of the response.
 
@@ -344,7 +325,7 @@ Often you'll want to use the existing generic views, but use some slightly custo
 
 For example, if you need to lookup objects based on multiple fields in the URL conf, you could create a mixin class like the following:
 
-    class MultipleFieldLookupMixin(object):
+    class MultipleFieldLookupMixin:
         """
         Apply this mixin to any view or viewset to get multiple field filtering
         based on a `lookup_fields` attribute, instead of the default single field filtering.
@@ -354,15 +335,18 @@ For example, if you need to lookup objects based on multiple fields in the URL c
             queryset = self.filter_queryset(queryset)  # Apply any filter backends
             filter = {}
             for field in self.lookup_fields:
-                filter[field] = self.kwargs[field]
-            return get_object_or_404(queryset, **filter)  # Lookup the object
+                if self.kwargs.get(field): # Ignore empty fields.
+                    filter[field] = self.kwargs[field]
+            obj = get_object_or_404(queryset, **filter)  # Lookup the object
+            self.check_object_permissions(self.request, obj)
+            return obj
 
 You can then simply apply this mixin to a view or viewset anytime you need to apply the custom behavior.
 
     class RetrieveUserView(MultipleFieldLookupMixin, generics.RetrieveAPIView):
         queryset = User.objects.all()
         serializer_class = UserSerializer
-        lookup_fields = ('account', 'username')
+        lookup_fields = ['account', 'username']
 
 Using custom mixins is a good option if you have custom behavior that needs to be used.
 
@@ -398,23 +382,17 @@ If you need to generic PUT-as-create behavior you may want to include something 
 
 The following third party packages provide additional generic view implementations.
 
-## Django REST Framework bulk
-
-The [django-rest-framework-bulk package][django-rest-framework-bulk] implements generic view mixins as well as some common concrete generic views to allow to apply bulk operations via API requests.
-
 ## Django Rest Multiple Models
 
 [Django Rest Multiple Models][django-rest-multiple-models] provides a generic view (and mixin) for sending multiple serialized models and/or querysets via a single API request.
 
 
-[cite]: https://docs.djangoproject.com/en/dev/ref/class-based-views/#base-vs-generic-views
+[cite]: https://docs.djangoproject.com/en/stable/ref/class-based-views/#base-vs-generic-views
 [GenericAPIView]: #genericapiview
 [ListModelMixin]: #listmodelmixin
 [CreateModelMixin]: #createmodelmixin
 [RetrieveModelMixin]: #retrievemodelmixin
 [UpdateModelMixin]: #updatemodelmixin
 [DestroyModelMixin]: #destroymodelmixin
-[django-rest-framework-bulk]: https://github.com/miki725/django-rest-framework-bulk
-[django-rest-multiple-models]: https://github.com/Axiologue/DjangoRestMultipleModels
-
-
+[django-rest-multiple-models]: https://github.com/MattBroach/DjangoRestMultipleModels
+[django-docs-select-related]: https://docs.djangoproject.com/en/3.1/ref/models/querysets/#django.db.models.query.QuerySet.select_related

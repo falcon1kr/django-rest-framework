@@ -1,23 +1,21 @@
-from __future__ import unicode_literals
+import contextlib
+from collections.abc import Mapping, MutableMapping
 
-import collections
-from collections import OrderedDict
+from django.utils.encoding import force_str
 
-from django.utils.encoding import force_text
-
-from rest_framework.compat import unicode_to_repr
+from rest_framework.utils import json
 
 
-class ReturnDict(OrderedDict):
+class ReturnDict(dict):
     """
-    Return object from `serialier.data` for the `Serializer` class.
+    Return object from `serializer.data` for the `Serializer` class.
     Includes a backlink to the serializer instance for renderers
     to use if they need richer field information.
     """
 
     def __init__(self, *args, **kwargs):
         self.serializer = kwargs.pop('serializer')
-        super(ReturnDict, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def copy(self):
         return ReturnDict(self, serializer=self.serializer)
@@ -30,17 +28,32 @@ class ReturnDict(OrderedDict):
         # but preserve the raw data.
         return (dict, (dict(self),))
 
+    # These are basically copied from OrderedDict, with `serializer` added.
+    def __or__(self, other):
+        if not isinstance(other, dict):
+            return NotImplemented
+        new = self.__class__(self, serializer=self.serializer)
+        new.update(other)
+        return new
+
+    def __ror__(self, other):
+        if not isinstance(other, dict):
+            return NotImplemented
+        new = self.__class__(other, serializer=self.serializer)
+        new.update(self)
+        return new
+
 
 class ReturnList(list):
     """
-    Return object from `serialier.data` for the `SerializerList` class.
+    Return object from `serializer.data` for the `SerializerList` class.
     Includes a backlink to the serializer instance for renderers
     to use if they need richer field information.
     """
 
     def __init__(self, *args, **kwargs):
         self.serializer = kwargs.pop('serializer')
-        super(ReturnList, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __repr__(self):
         return list.__repr__(self)
@@ -51,7 +64,7 @@ class ReturnList(list):
         return (list, (list(self),))
 
 
-class BoundField(object):
+class BoundField:
     """
     A field object that also includes `.value` and `.error` properties.
     Returned when iterating over a serializer instance,
@@ -73,12 +86,28 @@ class BoundField(object):
         return self._field.__class__
 
     def __repr__(self):
-        return unicode_to_repr('<%s value=%s errors=%s>' % (
+        return '<%s value=%s errors=%s>' % (
             self.__class__.__name__, self.value, self.errors
-        ))
+        )
 
     def as_form_field(self):
-        value = '' if (self.value is None or self.value is False) else force_text(self.value)
+        value = '' if (self.value is None or self.value is False) else self.value
+        return self.__class__(self._field, value, self.errors, self._prefix)
+
+
+class JSONBoundField(BoundField):
+    def as_form_field(self):
+        value = self.value
+        # When HTML form input is used and the input is not valid
+        # value will be a JSONString, rather than a JSON primitive.
+        if not getattr(value, 'is_json_string', False):
+            with contextlib.suppress(TypeError, ValueError):
+                value = json.dumps(
+                    self.value,
+                    sort_keys=True,
+                    indent=4,
+                    separators=(',', ': '),
+                )
         return self.__class__(self._field, value, self.errors, self._prefix)
 
 
@@ -90,9 +119,9 @@ class NestedBoundField(BoundField):
     """
 
     def __init__(self, field, value, errors, prefix=''):
-        if value is None:
+        if value is None or value == '' or not isinstance(value, Mapping):
             value = {}
-        super(NestedBoundField, self).__init__(field, value, errors, prefix)
+        super().__init__(field, value, errors, prefix)
 
     def __iter__(self):
         for field in self.fields.values():
@@ -101,9 +130,11 @@ class NestedBoundField(BoundField):
     def __getitem__(self, key):
         field = self.fields[key]
         value = self.value.get(key) if self.value else None
-        error = self.errors.get(key) if self.errors else None
+        error = self.errors.get(key) if isinstance(self.errors, dict) else None
         if hasattr(field, 'fields'):
             return NestedBoundField(field, value, error, prefix=self.name + '.')
+        elif getattr(field, '_is_jsonfield', False):
+            return JSONBoundField(field, value, error, prefix=self.name + '.')
         return BoundField(field, value, error, prefix=self.name + '.')
 
     def as_form_field(self):
@@ -112,11 +143,11 @@ class NestedBoundField(BoundField):
             if isinstance(value, (list, dict)):
                 values[key] = value
             else:
-                values[key] = '' if (value is None or value is False) else force_text(value)
+                values[key] = '' if (value is None or value is False) else force_str(value)
         return self.__class__(self._field, values, self.errors, self._prefix)
 
 
-class BindingDict(collections.MutableMapping):
+class BindingDict(MutableMapping):
     """
     This dict-like object is used to store fields on a serializer.
 
@@ -127,7 +158,7 @@ class BindingDict(collections.MutableMapping):
 
     def __init__(self, serializer):
         self.serializer = serializer
-        self.fields = OrderedDict()
+        self.fields = {}
 
     def __setitem__(self, key, field):
         self.fields[key] = field

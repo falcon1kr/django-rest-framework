@@ -1,32 +1,10 @@
+from operator import attrgetter
+
 from django.core.exceptions import ObjectDoesNotExist
-from django.core.urlresolvers import NoReverseMatch
+from django.urls import NoReverseMatch
 
 
-class UsingURLPatterns(object):
-    """
-    Isolates URL patterns used during testing on the test class itself.
-    For example:
-
-    class MyTestCase(UsingURLPatterns, TestCase):
-        urlpatterns = [
-            ...
-        ]
-
-        def test_something(self):
-            ...
-    """
-    urls = __name__
-
-    def setUp(self):
-        global urlpatterns
-        urlpatterns = self.urlpatterns
-
-    def tearDown(self):
-        global urlpatterns
-        urlpatterns = []
-
-
-class MockObject(object):
+class MockObject:
     def __init__(self, **kwargs):
         self._kwargs = kwargs
         for key, val in kwargs.items():
@@ -40,26 +18,30 @@ class MockObject(object):
         return '<MockObject %s>' % kwargs_str
 
 
-class MockQueryset(object):
+class MockQueryset:
     def __init__(self, iterable):
         self.items = iterable
+
+    def __getitem__(self, val):
+        return self.items[val]
 
     def get(self, **lookup):
         for item in self.items:
             if all([
-                getattr(item, key, None) == value
+                attrgetter(key.replace('__', '.'))(item) == value
                 for key, value in lookup.items()
             ]):
                 return item
         raise ObjectDoesNotExist()
 
 
-class BadType(object):
+class BadType:
     """
     When used as a lookup with a `MockQueryset`, these objects
     will raise a `TypeError`, as occurs in Django when making
     queryset lookups with an incorrect type for the lookup value.
     """
+
     def __eq__(self):
         raise TypeError()
 

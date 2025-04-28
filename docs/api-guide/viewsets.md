@@ -1,4 +1,7 @@
-source: viewsets.py
+---
+source:
+    - viewsets.py
+---
 
 # ViewSets
 
@@ -51,7 +54,7 @@ Typically we wouldn't do this, but would instead register the viewset with a rou
     from rest_framework.routers import DefaultRouter
 
     router = DefaultRouter()
-    router.register(r'users', UserViewSet)
+    router.register(r'users', UserViewSet, basename='user')
     urlpatterns = router.urls
 
 Rather than writing your own viewsets, you'll often want to use the existing base classes that provide a default set of behavior.  For example:
@@ -70,9 +73,10 @@ There are two main advantages of using a `ViewSet` class over using a `View` cla
 
 Both of these come with a trade-off.  Using regular views and URL confs is more explicit and gives you more control.  ViewSets are helpful if you want to get up and running quickly, or when you have a large API and you want to enforce a consistent URL configuration throughout.
 
-## Marking extra actions for routing
 
-The default routers included with REST framework will provide routes for a standard set of create/retrieve/update/destroy style operations, as shown below:
+## ViewSet actions
+
+The default routers included with REST framework will provide routes for a standard set of create/retrieve/update/destroy style actions, as shown below:
 
     class UserViewSet(viewsets.ViewSet):
         """
@@ -101,16 +105,40 @@ The default routers included with REST framework will provide routes for a stand
         def destroy(self, request, pk=None):
             pass
 
-If you have ad-hoc methods that you need to be routed to, you can mark them as requiring routing using the `@detail_route` or `@list_route` decorators.
+## Introspecting ViewSet actions
 
-The `@detail_route` decorator contains `pk` in its URL pattern and is intended for methods which require a single instance. The `@list_route` decorator is intended for methods which operate on a list of objects.
+During dispatch, the following attributes are available on the `ViewSet`.
 
-For example:
+* `basename` - the base to use for the URL names that are created.
+* `action` - the name of the current action (e.g., `list`, `create`).
+* `detail` - boolean indicating if the current action is configured for a list or detail view.
+* `suffix` - the display suffix for the viewset type - mirrors the `detail` attribute.
+* `name` - the display name for the viewset. This argument is mutually exclusive to `suffix`.
+* `description` - the display description for the individual view of a viewset.
+
+You may inspect these attributes to adjust behavior based on the current action. For example, you could restrict permissions to everything except the `list` action similar to this:
+
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action == 'list':
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAdminUser]
+        return [permission() for permission in permission_classes]
+
+**Note**: the `action` attribute is not available in the `get_parsers`, `get_authenticators` and `get_content_negotiator` methods, as it is set _after_ they are called in the framework lifecycle. If you override one of these methods and try to access the `action` attribute in them, you will get an `AttributeError` error.
+
+## Marking extra actions for routing
+
+If you have ad-hoc methods that should be routable, you can mark them as such with the `@action` decorator. Like regular actions, extra actions may be intended for either a single object, or an entire collection. To indicate this, set the `detail` argument to `True` or `False`. The router will configure its URL patterns accordingly. e.g., the `DefaultRouter` will configure detail actions to contain `pk` in their URL patterns.
+
+A more complete example of extra actions:
 
     from django.contrib.auth.models import User
-    from rest_framework import status
-    from rest_framework import viewsets
-    from rest_framework.decorators import detail_route, list_route
+    from rest_framework import status, viewsets
+    from rest_framework.decorators import action
     from rest_framework.response import Response
     from myapp.serializers import UserSerializer, PasswordSerializer
 
@@ -121,21 +149,21 @@ For example:
         queryset = User.objects.all()
         serializer_class = UserSerializer
 
-        @detail_route(methods=['post'])
+        @action(detail=True, methods=['post'])
         def set_password(self, request, pk=None):
             user = self.get_object()
             serializer = PasswordSerializer(data=request.data)
             if serializer.is_valid():
-                user.set_password(serializer.data['password'])
+                user.set_password(serializer.validated_data['password'])
                 user.save()
                 return Response({'status': 'password set'})
             else:
                 return Response(serializer.errors,
                                 status=status.HTTP_400_BAD_REQUEST)
 
-        @list_route()
+        @action(detail=False)
         def recent_users(self, request):
-            recent_users = User.objects.all().order('-last_login')
+            recent_users = User.objects.all().order_by('-last_login')
 
             page = self.paginate_queryset(recent_users)
             if page is not None:
@@ -145,19 +173,69 @@ For example:
             serializer = self.get_serializer(recent_users, many=True)
             return Response(serializer.data)
 
-The decorators can additionally take extra arguments that will be set for the routed view only.  For example...
 
-        @detail_route(methods=['post'], permission_classes=[IsAdminOrIsSelf])
-        def set_password(self, request, pk=None):
-           ...
+The `action` decorator will route `GET` requests by default, but may also accept other HTTP methods by setting the `methods` argument.  For example:
 
-These decorators will route `GET` requests by default, but may also accept other HTTP methods, by using the `methods` argument.  For example:
-
-        @detail_route(methods=['post', 'delete'])
+        @action(detail=True, methods=['post', 'delete'])
         def unset_password(self, request, pk=None):
            ...
 
-The two new actions will then be available at the urls `^users/{pk}/set_password/$` and `^users/{pk}/unset_password/$`
+Argument `methods` also supports HTTP methods defined as [HTTPMethod](https://docs.python.org/3/library/http.html#http.HTTPMethod). Example below is identical to the one above: 
+
+        from http import HTTPMethod
+
+        @action(detail=True, methods=[HTTPMethod.POST, HTTPMethod.DELETE])
+        def unset_password(self, request, pk=None):
+           ...
+
+The decorator allows you to override any viewset-level configuration such as `permission_classes`, `serializer_class`, `filter_backends`...:
+
+        @action(detail=True, methods=['post'], permission_classes=[IsAdminOrIsSelf])
+        def set_password(self, request, pk=None):
+           ...
+
+The two new actions will then be available at the urls `^users/{pk}/set_password/$` and `^users/{pk}/unset_password/$`. Use the `url_path` and `url_name` parameters to change the URL segment and the reverse URL name of the action.
+
+To view all extra actions, call the `.get_extra_actions()` method.
+
+### Routing additional HTTP methods for extra actions
+
+Extra actions can map additional HTTP methods to separate `ViewSet` methods. For example, the above password set/unset methods could be consolidated into a single route. Note that additional mappings do not accept arguments.
+
+```python
+@action(detail=True, methods=["put"], name="Change Password")
+def password(self, request, pk=None):
+    """Update the user's password."""
+    ...
+
+
+@password.mapping.delete
+def delete_password(self, request, pk=None):
+    """Delete the user's password."""
+    ...
+```
+
+## Reversing action URLs
+
+If you need to get the URL of an action, use the `.reverse_action()` method. This is a convenience wrapper for `reverse()`, automatically passing the view's `request` object and prepending the `url_name` with the `.basename` attribute.
+
+Note that the `basename` is provided by the router during `ViewSet` registration. If you are not using a router, then you must provide the `basename` argument to the `.as_view()` method.
+
+Using the example from the previous section:
+
+```pycon
+>>> view.reverse_action("set-password", args=["1"])
+'http://localhost:8000/api/users/1/set_password'
+```
+
+Alternatively, you can use the `url_name` attribute set by the `@action` decorator.
+
+```pycon
+>>> view.reverse_action(view.set_password.url_name, args=['1'])
+'http://localhost:8000/api/users/1/set_password'
+```
+
+The `url_name` argument for `.reverse_action()` should match the same argument to the `@action` decorator. Additionally, this method can be used to reverse the default actions, such as `list` and `create`.
 
 ---
 
@@ -179,7 +257,7 @@ In order to use a `GenericViewSet` class you'll override the class and either mi
 
 The `ModelViewSet` class inherits from `GenericAPIView` and includes implementations for various actions, by mixing in the behavior of the various mixin classes.
 
-The actions provided by the `ModelViewSet` class are `.list()`, `.retrieve()`,  `.create()`, `.update()`, and `.destroy()`.
+The actions provided by the `ModelViewSet` class are `.list()`, `.retrieve()`, `.create()`, `.update()`, `.partial_update()`, and `.destroy()`.
 
 #### Example
 
@@ -206,7 +284,7 @@ Note that you can use any of the standard attributes or method overrides provide
         def get_queryset(self):
             return self.request.user.accounts.all()
 
-Note however that upon removal of the `queryset` property from your `ViewSet`, any associated [router][routers] will be unable to derive the base_name of your Model automatically, and so you will have to specify the `base_name` kwarg as part of your [router registration][routers].
+Note however that upon removal of the `queryset` property from your `ViewSet`, any associated [router][routers] will be unable to derive the basename of your Model automatically, and so you will have to specify the `basename` kwarg as part of your [router registration][routers].
 
 Also note that although this class provides the complete set of create/list/retrieve/update/destroy actions by default, you can restrict the available operations by using the standard permission classes.
 
@@ -235,6 +313,8 @@ You may need to provide custom `ViewSet` classes that do not have the full set o
 
 To create a base viewset class that provides `create`, `list` and `retrieve` operations, inherit from `GenericViewSet`, and mixin the required actions:
 
+    from rest_framework import mixins, viewsets
+
     class CreateListRetrieveViewSet(mixins.CreateModelMixin,
                                     mixins.ListModelMixin,
                                     mixins.RetrieveModelMixin,
@@ -249,5 +329,5 @@ To create a base viewset class that provides `create`, `list` and `retrieve` ope
 
 By creating your own base `ViewSet` classes, you can provide common behavior that can be reused in multiple viewsets across your API.
 
-[cite]: http://guides.rubyonrails.org/routing.html
+[cite]: https://guides.rubyonrails.org/action_controller_overview.html
 [routers]: routers.md

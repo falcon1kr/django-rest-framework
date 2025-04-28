@@ -17,9 +17,9 @@ You can change the default language by using the standard Django `LANGUAGE_CODE`
 
     LANGUAGE_CODE = "es-es"
 
-You can turn on per-request language requests by adding `LocalMiddleware` to your `MIDDLEWARE_CLASSES` setting:
+You can turn on per-request language requests by adding `LocalMiddleware` to your `MIDDLEWARE` setting:
 
-    MIDDLEWARE_CLASSES = [
+    MIDDLEWARE = [
         ...
         'django.middleware.locale.LocaleMiddleware'
     ]
@@ -43,7 +43,7 @@ REST framework includes these built-in translations both for standard exception 
 
 Note that the translations only apply to the error strings themselves. The format of error messages, and the keys of field names will remain the same. An example `400 Bad Request` response body might look like this:
 
-    {"detail": {"username": ["Esse campo deve ser unico."]}}
+    {"detail": {"username": ["Esse campo deve ser único."]}}
 
 If you want to use different string for parts of the response such as `detail` and `non_field_errors` then you can modify this behavior by using a [custom exception handler][custom-exception-handler].
 
@@ -81,7 +81,7 @@ If you're translating a new language you'll need to translate the existing REST 
 
 4. Edit the `django.po` file you've just copied, translating all the error messages.
 
-5. Run `manage.py compilemessages -l pt_BR` to make the translations 
+5. Run `manage.py compilemessages -l pt_BR` to make the translations
 available for Django to use. You should see a message like `processing file django.po in <...>/locale/pt_BR/LC_MESSAGES`.
 
 6. Restart your development server to see the changes take effect.
@@ -90,7 +90,7 @@ If you're only translating custom error messages that exist inside your project 
 
 ## How the language is determined
 
-If you want to allow per-request language preferences you'll need to include `django.middleware.locale.LocaleMiddleware` in your `MIDDLEWARE_CLASSES` setting.
+If you want to allow per-request language preferences you'll need to include `django.middleware.locale.LocaleMiddleware` in your `MIDDLEWARE` setting.
 
 You can find more information on how the language preference is determined in the [Django documentation][django-language-preference]. For reference, the method is:
 
@@ -102,12 +102,11 @@ You can find more information on how the language preference is determined in th
 
 For API clients the most appropriate of these will typically be to use the `Accept-Language` header; Sessions and cookies will not be available unless using session authentication, and generally better practice to prefer an `Accept-Language` header for API clients rather than using language URL prefixes.
 
-[cite]: http://youtu.be/Wa0VfS2q94Y
-[django-translation]: https://docs.djangoproject.com/en/1.7/topics/i18n/translation
+[cite]: https://youtu.be/Wa0VfS2q94Y
+[django-translation]: https://docs.djangoproject.com/en/stable/topics/i18n/translation
 [custom-exception-handler]: ../api-guide/exceptions.md#custom-exception-handling
-[transifex-project]: https://www.transifex.com/projects/p/django-rest-framework/
-[django-po-source]: https://raw.githubusercontent.com/tomchristie/django-rest-framework/master/rest_framework/locale/en_US/LC_MESSAGES/django.po 
-[django-language-preference]: https://docs.djangoproject.com/en/1.7/topics/i18n/translation/#how-django-discovers-language-preference
-[django-locale-paths]: https://docs.djangoproject.com/en/1.7/ref/settings/#std:setting-LOCALE_PATHS
-[django-locale-name]: https://docs.djangoproject.com/en/1.7/topics/i18n/#term-locale-name
-[contributing]: ../../CONTRIBUTING.md
+[transifex-project]: https://explore.transifex.com/django-rest-framework-1/django-rest-framework/
+[django-po-source]: https://raw.githubusercontent.com/encode/django-rest-framework/master/rest_framework/locale/en_US/LC_MESSAGES/django.po
+[django-language-preference]: https://docs.djangoproject.com/en/stable/topics/i18n/translation/#how-django-discovers-language-preference
+[django-locale-paths]: https://docs.djangoproject.com/en/stable/ref/settings/#std:setting-LOCALE_PATHS
+[django-locale-name]: https://docs.djangoproject.com/en/stable/topics/i18n/#term-locale-name

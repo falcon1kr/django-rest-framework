@@ -1,4 +1,7 @@
-source: settings.py
+---
+source:
+    - settings.py
+---
 
 # Settings
 
@@ -11,12 +14,12 @@ Configuration for REST framework is all namespaced inside a single Django settin
 For example your project's `settings.py` file might include something like this:
 
     REST_FRAMEWORK = {
-        'DEFAULT_RENDERER_CLASSES': (
+        'DEFAULT_RENDERER_CLASSES': [
             'rest_framework.renderers.JSONRenderer',
-        ),
-        'DEFAULT_PARSER_CLASSES': (
+        ],
+        'DEFAULT_PARSER_CLASSES': [
             'rest_framework.parsers.JSONParser',
-        )
+        ]
     }
 
 ## Accessing settings
@@ -26,7 +29,7 @@ you should use the `api_settings` object.  For example.
 
     from rest_framework.settings import api_settings
 
-    print api_settings.DEFAULT_AUTHENTICATION_CLASSES
+    print(api_settings.DEFAULT_AUTHENTICATION_CLASSES)
 
 The `api_settings` object will check for any user-defined settings, and otherwise fall back to the default values.  Any setting that uses string import paths to refer to a class will automatically import and return the referenced class, instead of the string literal.
 
@@ -36,7 +39,7 @@ The `api_settings` object will check for any user-defined settings, and otherwis
 
 ## API policy settings
 
-*The following settings control the basic API policies, and are applied to every `APIView` class based view, or `@api_view` function based view.*
+*The following settings control the basic API policies, and are applied to every `APIView` class-based view, or `@api_view` function based view.*
 
 #### DEFAULT_RENDERER_CLASSES
 
@@ -44,10 +47,10 @@ A list or tuple of renderer classes, that determines the default set of renderer
 
 Default:
 
-    (
+    [
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
-    )
+    ]
 
 #### DEFAULT_PARSER_CLASSES
 
@@ -55,11 +58,11 @@ A list or tuple of parser classes, that determines the default set of parsers us
 
 Default:
 
-    (
+    [
         'rest_framework.parsers.JSONParser',
         'rest_framework.parsers.FormParser',
         'rest_framework.parsers.MultiPartParser'
-    )
+    ]
 
 #### DEFAULT_AUTHENTICATION_CLASSES
 
@@ -67,10 +70,10 @@ A list or tuple of authentication classes, that determines the default set of au
 
 Default:
 
-    (
+    [
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication'
-    )
+    ]
 
 #### DEFAULT_PERMISSION_CLASSES
 
@@ -78,15 +81,15 @@ A list or tuple of permission classes, that determines the default set of permis
 
 Default:
 
-    (
+    [
         'rest_framework.permissions.AllowAny',
-    )
+    ]
 
 #### DEFAULT_THROTTLE_CLASSES
 
 A list or tuple of throttle classes, that determines the default set of throttles checked at the start of a view.
 
-Default: `()`
+Default: `[]`
 
 #### DEFAULT_CONTENT_NEGOTIATION_CLASS
 
@@ -94,77 +97,35 @@ A content negotiation class, that determines how a renderer is selected for the 
 
 Default: `'rest_framework.negotiation.DefaultContentNegotiation'`
 
+#### DEFAULT_SCHEMA_CLASS
+
+A view inspector class that will be used for schema generation.
+
+Default: `'rest_framework.schemas.openapi.AutoSchema'`
+
 ---
 
 ## Generic view settings
 
-*The following settings control the behavior of the generic class based views.*
-
-#### DEFAULT_PAGINATION_SERIALIZER_CLASS
-
-A class the determines the default serialization style for paginated responses.
-
-Default: `rest_framework.pagination.PaginationSerializer`
+*The following settings control the behavior of the generic class-based views.*
 
 #### DEFAULT_FILTER_BACKENDS
 
 A list of filter backend classes that should be used for generic filtering.
 If set to `None` then generic filtering is disabled.
 
-#### PAGINATE_BY
+#### DEFAULT_PAGINATION_CLASS
+
+The default class to use for queryset pagination. If set to `None`, pagination
+is disabled by default. See the pagination documentation for further guidance on
+[setting](pagination.md#setting-the-pagination-style) and
+[modifying](pagination.md#modifying-the-pagination-style) the pagination style.
+
+Default: `None`
+
+#### PAGE_SIZE
 
 The default page size to use for pagination.  If set to `None`, pagination is disabled by default.
-
-Default: `None`
-
-#### PAGINATE_BY_PARAM
-
----
-
-**This setting is pending deprecation.**
-
-See the pagination documentation for further guidance on [setting the pagination style](pagination.md#modifying-the-pagination-style).
-
----
-
-The name of a query parameter, which can be used by the client to override the default page size to use for pagination.  If set to `None`, clients may not override the default page size.
-
-For example, given the following settings:
-
-    REST_FRAMEWORK = {
-    	'PAGINATE_BY': 10,
-    	'PAGINATE_BY_PARAM': 'page_size',
-    }
-
-A client would be able to modify the pagination size by using the `page_size` query parameter.  For example:
-
-    GET http://example.com/api/accounts?page_size=25
-
-Default: `None`
-
-#### MAX_PAGINATE_BY
-
----
-
-**This setting is pending deprecation.**
-
-See the pagination documentation for further guidance on [setting the pagination style](pagination.md#modifying-the-pagination-style).
-
----
-
-The maximum page size to allow when the page size is specified by the client.  If set to `None`, then no maximum limit is applied.
-
-For example, given the following settings:
-
-    REST_FRAMEWORK = {
-    	'PAGINATE_BY': 10,
-    	'PAGINATE_BY_PARAM': 'page_size',
-        'MAX_PAGINATE_BY': 100
-    }
-
-A client request like the following would return a paginated list of up to 100 items.
-
-    GET http://example.com/api/accounts?page_size=999
 
 Default: `None`
 
@@ -196,11 +157,17 @@ If set, this value will restrict the set of versions that may be returned by the
 
 Default: `None`
 
-#### VERSION_PARAMETER
+#### VERSION_PARAM
 
 The string that should used for any versioning parameters, such as in the media type or URL query parameters.
 
 Default: `'version'`
+
+#### DEFAULT_VERSIONING_CLASS
+
+The default versioning scheme to use.
+
+Default: `None`
 
 ---
 
@@ -211,6 +178,8 @@ Default: `'version'`
 #### UNAUTHENTICATED_USER
 
 The class that should be used to initialize `request.user` for unauthenticated requests.
+(If removing authentication entirely, e.g. by removing `django.contrib.auth` from
+`INSTALLED_APPS`, set `UNAUTHENTICATED_USER` to `None`.)
 
 Default: `django.contrib.auth.models.AnonymousUser`
 
@@ -242,10 +211,32 @@ The format of any of these renderer classes may be used when constructing a test
 
 Default:
 
-    (
+    [
         'rest_framework.renderers.MultiPartRenderer',
         'rest_framework.renderers.JSONRenderer'
-    )
+    ]
+
+---
+
+## Schema generation controls
+
+#### SCHEMA_COERCE_PATH_PK
+
+If set, this maps the `'pk'` identifier in the URL conf onto the actual field
+name when generating a schema path parameter. Typically this will be `'id'`.
+This gives a more suitable representation as "primary key" is an implementation
+detail, whereas "identifier" is a more general concept.
+
+Default: `True`
+
+#### SCHEMA_COERCE_METHOD_NAMES
+
+If set, this is used to map internal viewset method names onto external action
+names used in the schema generation. This allows us to generate names that
+are more suitable for an external representation than those that are used
+internally in the codebase.
+
+Default: `{'retrieve': 'read', 'destroy': 'delete'}`
 
 ---
 
@@ -355,6 +346,14 @@ The default style is to return minified responses, in line with [Heroku's API de
 
 Default: `True`
 
+#### STRICT_JSON
+
+When set to `True`, JSON rendering and parsing will only observe syntactically valid JSON, raising an exception for the extended float values (`nan`, `inf`, `-inf`) accepted by Python's `json` module. This is the recommended setting, as these values are not generally supported. e.g., neither Javascript's `JSON.Parse` nor PostgreSQL's JSON data type accept these values.
+
+When set to `False`, JSON rendering and parsing will be permissive. However, these values are still invalid and will need to be specially handled in your code.
+
+Default: `True`
+
 #### COERCE_DECIMAL_TO_STRING
 
 When returning decimal objects in API representations that do not support a native decimal type, it is normally best to return the value as a string. This avoids the loss of precision that occurs with binary floating point implementations.
@@ -375,10 +374,15 @@ A string representing the function that should be used when generating view name
 
 This should be a function with the following signature:
 
-    view_name(cls, suffix=None)
+    view_name(self)
 
-* `cls`: The view class.  Typically the name function would inspect the name of the class when generating a descriptive name, by accessing `cls.__name__`.
-* `suffix`: The optional suffix used when differentiating individual views in a viewset.
+* `self`: The view instance.  Typically the name function would inspect the name of the class when generating a descriptive name, by accessing `self.__class__.__name__`.
+
+If the view instance inherits `ViewSet`, it may have been initialized with several optional arguments:
+
+* `name`: A name explicitly provided to a view in the viewset. Typically, this value should be used as-is when provided.
+* `suffix`: Text used when differentiating individual views in a viewset. This argument is mutually exclusive to `name`.
+* `detail`: Boolean that differentiates an individual view in a viewset as either being a 'list' or 'detail' view.
 
 Default: `'rest_framework.views.get_view_name'`
 
@@ -390,12 +394,32 @@ This setting can be changed to support markup styles other than the default mark
 
 This should be a function with the following signature:
 
-    view_description(cls, html=False)
+    view_description(self, html=False)
 
-* `cls`: The view class.  Typically the description function would inspect the docstring of the class when generating a description, by accessing `cls.__doc__`
+* `self`: The view instance.  Typically the description function would inspect the docstring of the class when generating a description, by accessing `self.__class__.__doc__`
 * `html`: A boolean indicating if HTML output is required.  `True` when used in the browsable API, and `False` when used in generating `OPTIONS` responses.
 
+If the view instance inherits `ViewSet`, it may have been initialized with several optional arguments:
+
+* `description`: A description explicitly provided to the view in the viewset. Typically, this is set by extra viewset `action`s, and should be used as-is.
+
 Default: `'rest_framework.views.get_view_description'`
+
+## HTML Select Field cutoffs
+
+Global settings for [select field cutoffs for rendering relational fields](relations.md#select-field-cutoffs) in the browsable API.
+
+#### HTML_SELECT_CUTOFF
+
+Global setting for the `html_cutoff` value.  Must be an integer.
+
+Default: 1000
+
+#### HTML_SELECT_CUTOFF_TEXT
+
+A string representing a global setting for `html_cutoff_text`.
+
+Default: `"More than {count} items..."`
 
 ---
 
@@ -433,7 +457,7 @@ An integer of 0 or more, that may be used to specify the number of application p
 
 Default: `None`
 
-[cite]: http://www.python.org/dev/peps/pep-0020/
-[rfc4627]: http://www.ietf.org/rfc/rfc4627.txt
+[cite]: https://www.python.org/dev/peps/pep-0020/
+[rfc4627]: https://www.ietf.org/rfc/rfc4627.txt
 [heroku-minified-json]: https://github.com/interagent/http-api-design#keep-json-minified-in-all-responses
-[strftime]: http://docs.python.org/2/library/time.html#time.strftime
+[strftime]: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes

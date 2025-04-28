@@ -15,9 +15,23 @@ If you include fully-qualified URLs in your resource output, they will be 'urliz
 
 By default, the API will return the format specified by the headers, which in the case of the browser is HTML.  The format can be specified using `?format=` in the request, so you can look at the raw JSON response in a browser by adding `?format=json` to the URL.  There are helpful extensions for viewing JSON in [Firefox][ffjsonview] and [Chrome][chromejsonview].
 
+## Authentication
+
+To quickly add authentication to the browesable api, add a routes named `"login"` and `"logout"` under the namespace `"rest_framework"`. DRF provides default routes for this which you can add to your urlconf:
+
+```python
+from django.urls import include, path
+
+urlpatterns = [
+    # ...
+    path("api-auth/", include("rest_framework.urls", namespace="rest_framework"))
+]
+```
+
+
 ## Customizing
 
-The browsable API is built with [Twitter's Bootstrap][bootstrap] (v 2.1.1), making it easy to customize the look-and-feel.
+The browsable API is built with [Twitter's Bootstrap][bootstrap] (v 3.4.1), making it easy to customize the look-and-feel.
 
 To customize the default style, create a template called `rest_framework/api.html` that extends from `rest_framework/base.html`.  For example:
 
@@ -35,7 +49,7 @@ To replace the default theme, add a `bootstrap_theme` block to your `api.html` a
         <link rel="stylesheet" href="/path/to/my/bootstrap.css" type="text/css">
     {% endblock %}
 
-Suitable pre-made replacement themes are available at [Bootswatch][bswatch].  To use any of the Bootswatch themes, simply download the theme's `bootstrap.min.css` file, add it to your project, and replace the default one as described above.
+Suitable pre-made replacement themes are available at [Bootswatch][bswatch].  To use any of the Bootswatch themes, simply download the theme's `bootstrap.min.css` file, add it to your project, and replace the default one as described above. Make sure that the Bootstrap version of the new theme matches that of the default theme.
 
 You can also change the navbar variant, which by default is `navbar-inverse`, using the `bootstrap_navbar_variant` block.  The empty `{% block bootstrap_navbar_variant %}{% endblock %}` will use the original Bootstrap navbar style.
 
@@ -44,7 +58,7 @@ Full example:
     {% extends "rest_framework/base.html" %}
 
     {% block bootstrap_theme %}
-        <link rel="stylesheet" href="http://bootswatch.com/flatly/bootstrap.min.css" type="text/css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootswatch@3.4.1/flatly/bootstrap.min.css" type="text/css">
     {% endblock %}
 
     {% block bootstrap_navbar_variant %}{% endblock %}
@@ -62,6 +76,48 @@ For more specific CSS tweaks than simply overriding the default bootstrap theme 
 ![Slate theme][slate]
 
 *Screenshot of the bootswatch 'Slate' theme*
+
+---
+
+### Third party packages for customization
+
+You can use a third party package for customization, rather than doing it by yourself. Here is 3 packages for customizing the API:
+
+* [drf-restwind][drf-restwind] - a modern re-imagining of the Django REST Framework utilizes TailwindCSS and DaisyUI to provide flexible and customizable UI solutions with minimal coding effort.
+* [drf-redesign][drf-redesign] - A package for customizing the API using Bootstrap 5. Modern and sleek design, it comes with the support for dark mode.
+* [drf-material][drf-material] - Material design for Django REST Framework.
+
+---
+
+![API Root][drf-rw-api-root]
+
+![List View][drf-rw-list-view]
+
+![Detail View][drf-rw-detail-view]
+
+*Screenshots of the drf-restwind*
+
+---
+
+---
+
+![API Root][drf-r-api-root]
+
+![List View][drf-r-list-view]
+
+![Detail View][drf-r-detail-view]
+
+*Screenshot of the drf-redesign*
+
+---
+
+![API Root][drf-m-api-root]
+
+![List View][drf-m-api-root]
+
+![Detail View][drf-m-api-root]
+
+*Screenshot of the drf-material*
 
 ---
 
@@ -93,6 +149,8 @@ The browsable API makes use of the Bootstrap tooltips component.  Any element wi
 To add branding and customize the look-and-feel of the login template, create a template called `login.html` and add it to your project, eg: `templates/rest_framework/login.html`.  The template should extend from `rest_framework/login_base.html`.
 
 You can add your site name or branding by including the branding block:
+
+    {% extends "rest_framework/login_base.html" %}
 
     {% block branding %}
         <h3 style="margin: 0 0 20px;">My Site Name</h3>
@@ -146,21 +204,29 @@ An alternative, but more complex option would be to replace the input with an au
 
 There are [a variety of packages for autocomplete widgets][autocomplete-packages], such as [django-autocomplete-light][django-autocomplete-light], that you may want to refer to. Note that you will not be able to simply include these components as standard widgets, but will need to write the HTML template explicitly. This is because REST framework 3.0 no longer supports the `widget` keyword argument since it now uses templated HTML generation.
 
-Better support for autocomplete inputs is planned in future versions.
-
 ---
 
-[cite]: http://en.wikiquote.org/wiki/Alfred_North_Whitehead
+[cite]: https://en.wikiquote.org/wiki/Alfred_North_Whitehead
 [drfreverse]: ../api-guide/reverse.md
 [ffjsonview]: https://addons.mozilla.org/en-US/firefox/addon/jsonview/
 [chromejsonview]: https://chrome.google.com/webstore/detail/chklaanhfefbnpoihckbnefhakgolnmc
-[bootstrap]: http://getbootstrap.com
+[bootstrap]: https://getbootstrap.com/
 [cerulean]: ../img/cerulean.png
 [slate]: ../img/slate.png
-[bcustomize]: http://getbootstrap.com/2.3.2/customize.html
-[bswatch]: http://bootswatch.com/
-[bcomponents]: http://getbootstrap.com/2.3.2/components.html
-[bcomponentsnav]: http://getbootstrap.com/2.3.2/components.html#navbar
+[bswatch]: https://bootswatch.com/
+[bcomponents]: https://getbootstrap.com/2.3.2/components.html
+[bcomponentsnav]: https://getbootstrap.com/2.3.2/components.html#navbar
 [autocomplete-packages]: https://www.djangopackages.com/grids/g/auto-complete/
 [django-autocomplete-light]: https://github.com/yourlabs/django-autocomplete-light
-[django-autocomplete-light-install]: http://django-autocomplete-light.readthedocs.org/en/latest/#install
+[drf-restwind]: https://github.com/youzarsiph/drf-restwind
+[drf-rw-api-root]: ../img/drf-rw-api-root.png
+[drf-rw-list-view]: ../img/drf-rw-list-view.png
+[drf-rw-detail-view]: ../img/drf-rw-detail-view.png
+[drf-redesign]: https://github.com/youzarsiph/drf-redesign
+[drf-r-api-root]: ../img/drf-r-api-root.png
+[drf-r-list-view]: ../img/drf-r-list-view.png
+[drf-r-detail-view]: ../img/drf-r-detail-view.png
+[drf-material]: https://github.com/youzarsiph/drf-material
+[drf-m-api-root]: ../img/drf-m-api-root.png
+[drf-m-list-view]: ../img/drf-m-list-view.png
+[drf-m-detail-view]: ../img/drf-m-detail-view.png

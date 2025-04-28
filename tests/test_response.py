@@ -1,8 +1,5 @@
-from __future__ import unicode_literals
-
-from django.conf.urls import include, url
-from django.test import TestCase
-from django.utils import six
+from django.test import TestCase, override_settings
+from django.urls import include, path, re_path
 
 from rest_framework import generics, routers, serializers, status, viewsets
 from rest_framework.parsers import JSONParser
@@ -18,6 +15,7 @@ from tests.models import BasicModel
 class BasicModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = BasicModel
+        fields = '__all__'
 
 
 class MockPickleRenderer(BaseRenderer):
@@ -30,6 +28,7 @@ class MockJsonRenderer(BaseRenderer):
 
 class MockTextMediaRenderer(BaseRenderer):
     media_type = 'text/html'
+
 
 DUMMYSTATUS = status.HTTP_200_OK
 DUMMYCONTENT = 'dummycontent'
@@ -118,26 +117,24 @@ new_model_viewset_router.register(r'', HTMLNewModelViewSet)
 
 
 urlpatterns = [
-    url(r'^setbyview$', MockViewSettingContentType.as_view(renderer_classes=[RendererA, RendererB, RendererC])),
-    url(r'^.*\.(?P<format>.+)$', MockView.as_view(renderer_classes=[RendererA, RendererB, RendererC])),
-    url(r'^$', MockView.as_view(renderer_classes=[RendererA, RendererB, RendererC])),
-    url(r'^html$', HTMLView.as_view()),
-    url(r'^json$', JSONView.as_view()),
-    url(r'^html1$', HTMLView1.as_view()),
-    url(r'^html_new_model$', HTMLNewModelView.as_view()),
-    url(r'^html_new_model_viewset', include(new_model_viewset_router.urls)),
-    url(r'^restframework', include('rest_framework.urls', namespace='rest_framework'))
+    path('setbyview', MockViewSettingContentType.as_view(renderer_classes=[RendererA, RendererB, RendererC])),
+    re_path(r'^.*\.(?P<format>.+)$', MockView.as_view(renderer_classes=[RendererA, RendererB, RendererC])),
+    path('', MockView.as_view(renderer_classes=[RendererA, RendererB, RendererC])),
+    path('html', HTMLView.as_view()),
+    path('json', JSONView.as_view()),
+    path('html1', HTMLView1.as_view()),
+    path('html_new_model', HTMLNewModelView.as_view()),
+    path('html_new_model_viewset', include(new_model_viewset_router.urls)),
+    path('restframework', include('rest_framework.urls', namespace='rest_framework'))
 ]
 
 
-# TODO: Clean tests bellow - remove duplicates with above, better unit testing, ...
+# TODO: Clean tests below - remove duplicates with above, better unit testing, ...
+@override_settings(ROOT_URLCONF='tests.test_response')
 class RendererIntegrationTests(TestCase):
     """
     End-to-end testing of renderers using an ResponseMixin on a generic view.
     """
-
-    urls = 'tests.test_response'
-
     def test_default_renderer_serializes_content(self):
         """If the Accept header is not set the default renderer should serialize the response."""
         resp = self.client.get('/')
@@ -150,7 +147,7 @@ class RendererIntegrationTests(TestCase):
         resp = self.client.head('/')
         self.assertEqual(resp.status_code, DUMMYSTATUS)
         self.assertEqual(resp['Content-Type'], RendererA.media_type + '; charset=utf-8')
-        self.assertEqual(resp.content, six.b(''))
+        self.assertEqual(resp.content, b'')
 
     def test_default_renderer_serializes_content_on_accept_any(self):
         """If the Accept header is set to */* the default renderer should serialize the response."""
@@ -201,9 +198,8 @@ class RendererIntegrationTests(TestCase):
         self.assertEqual(resp.status_code, DUMMYSTATUS)
 
 
+@override_settings(ROOT_URLCONF='tests.test_response')
 class UnsupportedMediaTypeTests(TestCase):
-    urls = 'tests.test_response'
-
     def test_should_allow_posting_json(self):
         response = self.client.post('/json', data='{"test": 123}', content_type='application/json')
 
@@ -220,12 +216,11 @@ class UnsupportedMediaTypeTests(TestCase):
         self.assertEqual(response.status_code, 415)
 
 
+@override_settings(ROOT_URLCONF='tests.test_response')
 class Issue122Tests(TestCase):
     """
     Tests that covers #122.
     """
-    urls = 'tests.test_response'
-
     def test_only_html_renderer(self):
         """
         Test if no infinite recursion occurs.
@@ -239,13 +234,11 @@ class Issue122Tests(TestCase):
         self.client.get('/html1')
 
 
+@override_settings(ROOT_URLCONF='tests.test_response')
 class Issue467Tests(TestCase):
     """
     Tests for #467
     """
-
-    urls = 'tests.test_response'
-
     def test_form_has_label_and_help_text(self):
         resp = self.client.get('/html_new_model')
         self.assertEqual(resp['Content-Type'], 'text/html; charset=utf-8')
@@ -253,20 +246,18 @@ class Issue467Tests(TestCase):
         # self.assertContains(resp, 'Text description.')
 
 
+@override_settings(ROOT_URLCONF='tests.test_response')
 class Issue807Tests(TestCase):
     """
     Covers #807
     """
-
-    urls = 'tests.test_response'
-
     def test_does_not_append_charset_by_default(self):
         """
         Renderers don't include a charset unless set explicitly.
         """
         headers = {"HTTP_ACCEPT": RendererA.media_type}
         resp = self.client.get('/', **headers)
-        expected = "{0}; charset={1}".format(RendererA.media_type, 'utf-8')
+        expected = "{}; charset={}".format(RendererA.media_type, 'utf-8')
         self.assertEqual(expected, resp['Content-Type'])
 
     def test_if_there_is_charset_specified_on_renderer_it_gets_appended(self):
@@ -276,7 +267,7 @@ class Issue807Tests(TestCase):
         """
         headers = {"HTTP_ACCEPT": RendererC.media_type}
         resp = self.client.get('/', **headers)
-        expected = "{0}; charset={1}".format(RendererC.media_type, RendererC.charset)
+        expected = f"{RendererC.media_type}; charset={RendererC.charset}"
         self.assertEqual(expected, resp['Content-Type'])
 
     def test_content_type_set_explicitly_on_response(self):
@@ -292,3 +283,8 @@ class Issue807Tests(TestCase):
         self.assertEqual(resp['Content-Type'], 'text/html; charset=utf-8')
         # self.assertContains(resp, 'Text comes here')
         # self.assertContains(resp, 'Text description.')
+
+
+class TestTyping(TestCase):
+    def test_response_is_subscriptable(self):
+        assert Response is Response["foo"]

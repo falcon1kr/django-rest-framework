@@ -3,398 +3,574 @@
 # This file is distributed under the same license as the PACKAGE package.
 # 
 # Translators:
+# Denis Podlesniy <haos616@gmail.com>, 2016
+# Illarion <khlyestovillarion@gmail.com>, 2016
+# Kirill Tarasenko, 2016,2018
+# Victor Mireyev <greymouse2005@ya.ru>, 2017
 msgid ""
 msgstr ""
 "Project-Id-Version: Django REST framework\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2015-09-21 10:55+0200\n"
-"PO-Revision-Date: 2015-09-21 08:56+0000\n"
+"POT-Creation-Date: 2020-10-13 21:45+0200\n"
+"PO-Revision-Date: 2020-10-13 19:45+0000\n"
 "Last-Translator: Xavier Ordoquy <xordoquy@linovia.com>\n"
 "Language-Team: Ukrainian (http://www.transifex.com/django-rest-framework-1/django-rest-framework/language/uk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: uk\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n % 10 == 1 && n % 100 != 11 ? 0 : n % 1 == 0 && n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 1 : n % 1 == 0 && (n % 10 ==0 || (n % 10 >=5 && n % 10 <=9) || (n % 100 >=11 && n % 100 <=14 )) ? 2: 3);\n"
 
-#: authentication.py:72
+#: authentication.py:70
 msgid "Invalid basic header. No credentials provided."
-msgstr ""
+msgstr "Недійсний основний заголовок. Облікові дані відсутні."
 
-#: authentication.py:75
+#: authentication.py:73
 msgid "Invalid basic header. Credentials string should not contain spaces."
-msgstr ""
+msgstr "Недійсний основний заголовок. Строка з обліковими даними має бути без пробілів."
 
-#: authentication.py:81
+#: authentication.py:83
 msgid "Invalid basic header. Credentials not correctly base64 encoded."
-msgstr ""
+msgstr "Недійсний основний заголовок. Облікові дані невірно закодовані у base64."
 
-#: authentication.py:98
+#: authentication.py:101
 msgid "Invalid username/password."
-msgstr ""
+msgstr "Недійсне iм'я користувача/пароль."
 
-#: authentication.py:101 authentication.py:189
+#: authentication.py:104 authentication.py:206
 msgid "User inactive or deleted."
-msgstr ""
+msgstr "Користувач неактивний або видалений."
 
-#: authentication.py:168
+#: authentication.py:184
 msgid "Invalid token header. No credentials provided."
-msgstr ""
+msgstr "Недійсний токен. Облікові дані відсутні."
 
-#: authentication.py:171
+#: authentication.py:187
 msgid "Invalid token header. Token string should not contain spaces."
-msgstr ""
+msgstr "Недійсний токен. Значення токена не повинне містити пробіли."
 
-#: authentication.py:177
+#: authentication.py:193
 msgid ""
 "Invalid token header. Token string should not contain invalid characters."
-msgstr ""
+msgstr "Недійсний токен. Значення токена не повинне містити некоректні символи."
 
-#: authentication.py:186
+#: authentication.py:203
 msgid "Invalid token."
-msgstr ""
+msgstr "Недійсний токен."
 
-#: authtoken/serializers.py:20
-msgid "User account is disabled."
-msgstr ""
+#: authtoken/apps.py:7
+msgid "Auth Token"
+msgstr "Авторизаційний токен"
 
-#: authtoken/serializers.py:23
+#: authtoken/models.py:13
+msgid "Key"
+msgstr "Ключ"
+
+#: authtoken/models.py:16
+msgid "User"
+msgstr "Користувач"
+
+#: authtoken/models.py:18
+msgid "Created"
+msgstr "Створено"
+
+#: authtoken/models.py:27 authtoken/serializers.py:19
+msgid "Token"
+msgstr "Токен"
+
+#: authtoken/models.py:28
+msgid "Tokens"
+msgstr "Токени"
+
+#: authtoken/serializers.py:9
+msgid "Username"
+msgstr "Ім'я користувача"
+
+#: authtoken/serializers.py:13
+msgid "Password"
+msgstr "Пароль"
+
+#: authtoken/serializers.py:35
 msgid "Unable to log in with provided credentials."
-msgstr ""
+msgstr "Неможливо зайти з введеними даними."
 
-#: authtoken/serializers.py:26
+#: authtoken/serializers.py:38
 msgid "Must include \"username\" and \"password\"."
-msgstr ""
+msgstr "Має включати iм'я користувача та пароль"
 
-#: exceptions.py:49
+#: exceptions.py:102
 msgid "A server error occurred."
+msgstr "Помилка сервера."
+
+#: exceptions.py:142
+msgid "Invalid input."
 msgstr ""
 
-#: exceptions.py:84
+#: exceptions.py:161
 msgid "Malformed request."
-msgstr ""
+msgstr "Некоректний запит."
 
-#: exceptions.py:89
+#: exceptions.py:167
 msgid "Incorrect authentication credentials."
-msgstr ""
+msgstr "Некоректні реквізити перевірки достовірності."
 
-#: exceptions.py:94
+#: exceptions.py:173
 msgid "Authentication credentials were not provided."
-msgstr ""
+msgstr "Реквізити перевірки достовірності не надані."
 
-#: exceptions.py:99
+#: exceptions.py:179
 msgid "You do not have permission to perform this action."
-msgstr ""
+msgstr "У вас нема дозволу робити цю дію."
 
-#: exceptions.py:104 views.py:81
+#: exceptions.py:185
 msgid "Not found."
-msgstr ""
+msgstr "Не знайдено."
 
-#: exceptions.py:109
+#: exceptions.py:191
 #, python-brace-format
 msgid "Method \"{method}\" not allowed."
-msgstr ""
+msgstr "Метод \"{method}\" не дозволений."
 
-#: exceptions.py:120
+#: exceptions.py:202
 msgid "Could not satisfy the request Accept header."
-msgstr ""
+msgstr "Неможливо виконати запит заголовку Accept."
 
-#: exceptions.py:132
+#: exceptions.py:212
 #, python-brace-format
 msgid "Unsupported media type \"{media_type}\" in request."
-msgstr ""
+msgstr "Непідтримуваний тип даних \"{media_type}\" в запиті."
 
-#: exceptions.py:145
+#: exceptions.py:223
 msgid "Request was throttled."
+msgstr "Запит було проігноровано."
+
+#: exceptions.py:224
+#, python-brace-format
+msgid "Expected available in {wait} second."
 msgstr ""
 
-#: fields.py:262 relations.py:191 relations.py:224 validators.py:79
-#: validators.py:162
+#: exceptions.py:225
+#, python-brace-format
+msgid "Expected available in {wait} seconds."
+msgstr ""
+
+#: fields.py:316 relations.py:245 relations.py:279 validators.py:90
+#: validators.py:183
 msgid "This field is required."
-msgstr ""
+msgstr "Це поле обов'язкове."
 
-#: fields.py:263
+#: fields.py:317
 msgid "This field may not be null."
-msgstr ""
-
-#: fields.py:599 fields.py:627
-#, python-brace-format
-msgid "\"{input}\" is not a valid boolean."
-msgstr ""
-
-#: fields.py:662
-msgid "This field may not be blank."
-msgstr ""
-
-#: fields.py:663 fields.py:1594
-#, python-brace-format
-msgid "Ensure this field has no more than {max_length} characters."
-msgstr ""
-
-#: fields.py:664
-#, python-brace-format
-msgid "Ensure this field has at least {min_length} characters."
-msgstr ""
+msgstr "Це поле не може бути null."
 
 #: fields.py:701
+msgid "Must be a valid boolean."
+msgstr ""
+
+#: fields.py:766
+msgid "Not a valid string."
+msgstr ""
+
+#: fields.py:767
+msgid "This field may not be blank."
+msgstr "Це поле не може бути порожнім."
+
+#: fields.py:768 fields.py:1881
+#, python-brace-format
+msgid "Ensure this field has no more than {max_length} characters."
+msgstr "Переконайтесь, що кількість символів в цьому полі не перевищує {max_length}."
+
+#: fields.py:769
+#, python-brace-format
+msgid "Ensure this field has at least {min_length} characters."
+msgstr "Переконайтесь, що в цьому полі мінімум {min_length} символів."
+
+#: fields.py:816
 msgid "Enter a valid email address."
-msgstr ""
+msgstr "Введіть коректну адресу електронної пошти."
 
-#: fields.py:712
+#: fields.py:827
 msgid "This value does not match the required pattern."
-msgstr ""
+msgstr "Значення не відповідає необхідному патерну."
 
-#: fields.py:723
+#: fields.py:838
 msgid ""
 "Enter a valid \"slug\" consisting of letters, numbers, underscores or "
 "hyphens."
+msgstr "Введіть коректний \"slug\", що складається із букв, цифр, нижніх підкреслень або дефісів. "
+
+#: fields.py:839
+msgid ""
+"Enter a valid \"slug\" consisting of Unicode letters, numbers, underscores, "
+"or hyphens."
 msgstr ""
 
-#: fields.py:735
+#: fields.py:854
 msgid "Enter a valid URL."
+msgstr "Введіть коректний URL."
+
+#: fields.py:867
+msgid "Must be a valid UUID."
 msgstr ""
 
-#: fields.py:748
-#, python-brace-format
-msgid "\"{value}\" is not a valid UUID."
-msgstr ""
-
-#: fields.py:782
+#: fields.py:903
 msgid "Enter a valid IPv4 or IPv6 address."
-msgstr ""
+msgstr "Введіть коректну IPv4 або IPv6 адресу."
 
-#: fields.py:807
+#: fields.py:931
 msgid "A valid integer is required."
-msgstr ""
+msgstr "Необхідне цілочисельне значення."
 
-#: fields.py:808 fields.py:843 fields.py:876
+#: fields.py:932 fields.py:969 fields.py:1005 fields.py:1366
 #, python-brace-format
 msgid "Ensure this value is less than or equal to {max_value}."
-msgstr ""
+msgstr "Переконайтесь, що значення менше або дорівнює {max_value}."
 
-#: fields.py:809 fields.py:844 fields.py:877
+#: fields.py:933 fields.py:970 fields.py:1006 fields.py:1367
 #, python-brace-format
 msgid "Ensure this value is greater than or equal to {min_value}."
-msgstr ""
+msgstr "Переконайтесь, що значення більше або дорівнює {min_value}."
 
-#: fields.py:810 fields.py:845 fields.py:881
+#: fields.py:934 fields.py:971 fields.py:1010
 msgid "String value too large."
-msgstr ""
+msgstr "Строкове значення занадто велике."
 
-#: fields.py:842 fields.py:875
+#: fields.py:968 fields.py:1004
 msgid "A valid number is required."
-msgstr ""
+msgstr "Необхідне чисельне значення."
 
-#: fields.py:878
+#: fields.py:1007
 #, python-brace-format
 msgid "Ensure that there are no more than {max_digits} digits in total."
-msgstr ""
+msgstr "Переконайтесь, що в числі не більше {max_digits} знаків."
 
-#: fields.py:879
+#: fields.py:1008
 #, python-brace-format
 msgid ""
 "Ensure that there are no more than {max_decimal_places} decimal places."
-msgstr ""
+msgstr "Переконайтесь, що в числі не більше {max_decimal_places} знаків у дробовій частині."
 
-#: fields.py:880
+#: fields.py:1009
 #, python-brace-format
 msgid ""
 "Ensure that there are no more than {max_whole_digits} digits before the "
 "decimal point."
-msgstr ""
+msgstr "Переконайтесь, що в числі не більше {max_whole_digits} знаків у цілій частині."
 
-#: fields.py:994
+#: fields.py:1148
 #, python-brace-format
 msgid "Datetime has wrong format. Use one of these formats instead: {format}."
-msgstr ""
+msgstr "Невірний формат дата з часом. Використайте один з цих форматів: {format}."
 
-#: fields.py:995
+#: fields.py:1149
 msgid "Expected a datetime but got a date."
+msgstr "Очікувалась дата з часом, але було отримано дату."
+
+#: fields.py:1150
+#, python-brace-format
+msgid "Invalid datetime for the timezone \"{timezone}\"."
 msgstr ""
 
-#: fields.py:1060
+#: fields.py:1151
+msgid "Datetime value out of range."
+msgstr ""
+
+#: fields.py:1236
 #, python-brace-format
 msgid "Date has wrong format. Use one of these formats instead: {format}."
-msgstr ""
+msgstr "Невірний формат дати. Використайте один з цих форматів: {format}."
 
-#: fields.py:1061
+#: fields.py:1237
 msgid "Expected a date but got a datetime."
-msgstr ""
+msgstr "Очікувалась дата, але було отримано дату з часом."
 
-#: fields.py:1125
+#: fields.py:1303
 #, python-brace-format
 msgid "Time has wrong format. Use one of these formats instead: {format}."
-msgstr ""
+msgstr "Неправильний формат часу. Використайте один з цих форматів: {format}."
 
-#: fields.py:1180
+#: fields.py:1365
 #, python-brace-format
 msgid "Duration has wrong format. Use one of these formats instead: {format}."
-msgstr ""
+msgstr "Невірний формат тривалості. Використайте один з цих форматів: {format}."
 
-#: fields.py:1205 fields.py:1254
+#: fields.py:1399 fields.py:1456
 #, python-brace-format
 msgid "\"{input}\" is not a valid choice."
-msgstr ""
+msgstr "\"{input}\" не є коректним вибором."
 
-#: fields.py:1208 relations.py:58 relations.py:427
+#: fields.py:1402
 #, python-brace-format
 msgid "More than {count} items..."
-msgstr ""
+msgstr "Елементів більше, ніж {count}..."
 
-#: fields.py:1255 fields.py:1401 relations.py:423 serializers.py:504
+#: fields.py:1457 fields.py:1603 relations.py:485 serializers.py:570
 #, python-brace-format
 msgid "Expected a list of items but got type \"{input_type}\"."
-msgstr ""
+msgstr "Очікувався список елементів, але було отримано \"{input_type}\"."
 
-#: fields.py:1256
+#: fields.py:1458
 msgid "This selection may not be empty."
-msgstr ""
+msgstr "Вибір не може бути порожнім."
 
-#: fields.py:1294
+#: fields.py:1495
 #, python-brace-format
 msgid "\"{input}\" is not a valid path choice."
-msgstr ""
+msgstr "\"{input}\" вибраний шлях не є коректним."
 
-#: fields.py:1313
+#: fields.py:1514
 msgid "No file was submitted."
-msgstr ""
+msgstr "Файл не було відправленно."
 
-#: fields.py:1314
+#: fields.py:1515
 msgid ""
 "The submitted data was not a file. Check the encoding type on the form."
-msgstr ""
+msgstr "Відправленні дані не є файл. Перевірте тип кодування у формі."
 
-#: fields.py:1315
+#: fields.py:1516
 msgid "No filename could be determined."
-msgstr ""
+msgstr "Неможливо визначити ім'я файлу."
 
-#: fields.py:1316
+#: fields.py:1517
 msgid "The submitted file is empty."
-msgstr ""
+msgstr "Відправленний файл порожній."
 
-#: fields.py:1317
+#: fields.py:1518
 #, python-brace-format
 msgid ""
 "Ensure this filename has at most {max_length} characters (it has {length})."
-msgstr ""
+msgstr "Переконайтесь, що ім'я файлу становить менше {max_length} символів (зараз {length})."
 
-#: fields.py:1363
+#: fields.py:1566
 msgid ""
 "Upload a valid image. The file you uploaded was either not an image or a "
 "corrupted image."
-msgstr ""
+msgstr "Завантажте коректне зображення. Завантажений файл або не є зображенням, або пошкоджений."
 
-#: fields.py:1402 relations.py:424 serializers.py:505
+#: fields.py:1604 relations.py:486 serializers.py:571
 msgid "This list may not be empty."
+msgstr "Цей список не може бути порожнім."
+
+#: fields.py:1605
+#, python-brace-format
+msgid "Ensure this field has at least {min_length} elements."
 msgstr ""
 
-#: fields.py:1452
+#: fields.py:1606
+#, python-brace-format
+msgid "Ensure this field has no more than {max_length} elements."
+msgstr ""
+
+#: fields.py:1682
 #, python-brace-format
 msgid "Expected a dictionary of items but got type \"{input_type}\"."
+msgstr "Очікувався словник зі елементами, але було отримано \"{input_type}\"."
+
+#: fields.py:1683
+msgid "This dictionary may not be empty."
 msgstr ""
 
-#: pagination.py:192
-#, python-brace-format
-msgid "Invalid page \"{page_number}\": {message}."
+#: fields.py:1755
+msgid "Value must be valid JSON."
+msgstr "Значення повинно бути коректним JSON."
+
+#: filters.py:49 templates/rest_framework/filters/search.html:2
+msgid "Search"
+msgstr "Пошук"
+
+#: filters.py:50
+msgid "A search term."
 msgstr ""
 
-#: pagination.py:462
+#: filters.py:180 templates/rest_framework/filters/ordering.html:3
+msgid "Ordering"
+msgstr "Впорядкування"
+
+#: filters.py:181
+msgid "Which field to use when ordering the results."
+msgstr ""
+
+#: filters.py:287
+msgid "ascending"
+msgstr "у порядку зростання"
+
+#: filters.py:288
+msgid "descending"
+msgstr "у порядку зменшення"
+
+#: pagination.py:174
+msgid "A page number within the paginated result set."
+msgstr ""
+
+#: pagination.py:179 pagination.py:372 pagination.py:590
+msgid "Number of results to return per page."
+msgstr ""
+
+#: pagination.py:189
+msgid "Invalid page."
+msgstr "Недійсна сторінка."
+
+#: pagination.py:374
+msgid "The initial index from which to return the results."
+msgstr ""
+
+#: pagination.py:581
+msgid "The pagination cursor value."
+msgstr ""
+
+#: pagination.py:583
 msgid "Invalid cursor"
-msgstr ""
+msgstr "Недійсний курсор."
 
-#: relations.py:192
+#: relations.py:246
 #, python-brace-format
 msgid "Invalid pk \"{pk_value}\" - object does not exist."
-msgstr ""
+msgstr "Недопустимий первинний ключ \"{pk_value}\" - об'єкт не існує."
 
-#: relations.py:193
+#: relations.py:247
 #, python-brace-format
 msgid "Incorrect type. Expected pk value, received {data_type}."
-msgstr ""
+msgstr "Некоректний тип. Очікувалось значення первинного ключа, отримано {data_type}."
 
-#: relations.py:225
+#: relations.py:280
 msgid "Invalid hyperlink - No URL match."
-msgstr ""
+msgstr "Недійсне посилання - немає збігу за URL."
 
-#: relations.py:226
+#: relations.py:281
 msgid "Invalid hyperlink - Incorrect URL match."
-msgstr ""
+msgstr "Недійсне посилання - некоректний збіг за URL."
 
-#: relations.py:227
+#: relations.py:282
 msgid "Invalid hyperlink - Object does not exist."
-msgstr ""
+msgstr "Недійсне посилання - об'єкт не існує."
 
-#: relations.py:228
+#: relations.py:283
 #, python-brace-format
 msgid "Incorrect type. Expected URL string, received {data_type}."
-msgstr ""
+msgstr "Некоректний тип. Очікувався URL, отримано {data_type}."
 
-#: relations.py:387
+#: relations.py:448
 #, python-brace-format
 msgid "Object with {slug_name}={value} does not exist."
-msgstr ""
+msgstr "Об'єкт із {slug_name}={value} не існує."
 
-#: relations.py:388
+#: relations.py:449
 msgid "Invalid value."
+msgstr "Недійсне значення."
+
+#: schemas/utils.py:32
+msgid "unique integer value"
 msgstr ""
 
-#: serializers.py:310
+#: schemas/utils.py:34
+msgid "UUID string"
+msgstr ""
+
+#: schemas/utils.py:36
+msgid "unique value"
+msgstr ""
+
+#: schemas/utils.py:38
+#, python-brace-format
+msgid "A {value_type} identifying this {name}."
+msgstr ""
+
+#: serializers.py:337
 #, python-brace-format
 msgid "Invalid data. Expected a dictionary, but got {datatype}."
+msgstr "Недопустимі дані. Очікувався словник, але було отримано {datatype}."
+
+#: templates/rest_framework/admin.html:116
+#: templates/rest_framework/base.html:136
+msgid "Extra Actions"
 msgstr ""
 
-#: templates/rest_framework/horizontal/radio.html:2
-#: templates/rest_framework/inline/radio.html:2
-#: templates/rest_framework/vertical/radio.html:2
+#: templates/rest_framework/admin.html:130
+#: templates/rest_framework/base.html:150
+msgid "Filters"
+msgstr "Фільтри"
+
+#: templates/rest_framework/base.html:37
+msgid "navbar"
+msgstr ""
+
+#: templates/rest_framework/base.html:75
+msgid "content"
+msgstr ""
+
+#: templates/rest_framework/base.html:78
+msgid "request form"
+msgstr ""
+
+#: templates/rest_framework/base.html:157
+msgid "main content"
+msgstr ""
+
+#: templates/rest_framework/base.html:173
+msgid "request info"
+msgstr ""
+
+#: templates/rest_framework/base.html:177
+msgid "response info"
+msgstr ""
+
+#: templates/rest_framework/horizontal/radio.html:4
+#: templates/rest_framework/inline/radio.html:3
+#: templates/rest_framework/vertical/radio.html:3
 msgid "None"
-msgstr ""
+msgstr "Нічого"
 
-#: templates/rest_framework/horizontal/select_multiple.html:2
-#: templates/rest_framework/inline/select_multiple.html:2
-#: templates/rest_framework/vertical/select_multiple.html:2
+#: templates/rest_framework/horizontal/select_multiple.html:4
+#: templates/rest_framework/inline/select_multiple.html:3
+#: templates/rest_framework/vertical/select_multiple.html:3
 msgid "No items to select."
-msgstr ""
+msgstr "Немає елементів для вибору."
 
-#: validators.py:24
+#: validators.py:39
 msgid "This field must be unique."
-msgstr ""
+msgstr "Це поле повинне бути унікальним."
 
-#: validators.py:78
+#: validators.py:89
 #, python-brace-format
 msgid "The fields {field_names} must make a unique set."
+msgstr "Поля {field_names} повинні створювати унікальний масив значень."
+
+#: validators.py:171
+#, python-brace-format
+msgid "Surrogate characters are not allowed: U+{code_point:X}."
 msgstr ""
 
-#: validators.py:226
+#: validators.py:243
 #, python-brace-format
 msgid "This field must be unique for the \"{date_field}\" date."
-msgstr ""
+msgstr "Це поле повинне бути унікальним для дати \"{date_field}\"."
 
-#: validators.py:241
+#: validators.py:258
 #, python-brace-format
 msgid "This field must be unique for the \"{date_field}\" month."
-msgstr ""
+msgstr "Це поле повинне бути унікальним для місяця \"{date_field}\"."
 
-#: validators.py:254
+#: validators.py:271
 #, python-brace-format
 msgid "This field must be unique for the \"{date_field}\" year."
-msgstr ""
+msgstr "Це поле повинне бути унікальним для року \"{date_field}\"."
 
-#: versioning.py:42
+#: versioning.py:40
 msgid "Invalid version in \"Accept\" header."
-msgstr ""
+msgstr "Недопустима версія в загаловку \"Accept\"."
 
-#: versioning.py:73 versioning.py:115
+#: versioning.py:71
 msgid "Invalid version in URL path."
-msgstr ""
+msgstr "Недопустима версія в шляху URL."
 
-#: versioning.py:144
+#: versioning.py:116
+msgid "Invalid version in URL path. Does not match any version namespace."
+msgstr "Недопустима версія в шляху URL. Не співпадає з будь-яким простором версій."
+
+#: versioning.py:148
 msgid "Invalid version in hostname."
-msgstr ""
+msgstr "Недопустима версія в імені хоста."
 
-#: versioning.py:166
+#: versioning.py:170
 msgid "Invalid version in query parameter."
-msgstr ""
-
-#: views.py:88
-msgid "Permission denied."
-msgstr ""
+msgstr "Недопустима версія в параметрі запиту."

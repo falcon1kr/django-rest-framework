@@ -2,6 +2,8 @@
 *.db
 *~
 .*
+*.py.bak
+
 
 /site/
 /htmlcov/
@@ -11,7 +13,8 @@
 /*.egg-info/
 /env/
 MANIFEST
+coverage.*
 
+!.github
 !.gitignore
-!.travis.yml
-!.isort.cfg
+!.pre-commit-config.yaml

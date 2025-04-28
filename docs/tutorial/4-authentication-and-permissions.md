@@ -14,7 +14,7 @@ First, let's add a couple of fields.  One of those fields will be used to repres
 
 Add the following two fields to the `Snippet` model in `models.py`.
 
-    owner = models.ForeignKey('auth.User', related_name='snippets')
+    owner = models.ForeignKey('auth.User', related_name='snippets', on_delete=models.CASCADE)
     highlighted = models.TextField()
 
 We'd also need to make sure that when the model is saved, that we populate the highlighted field, using the `pygments` code highlighting library.
@@ -33,17 +33,17 @@ And now we can add a `.save()` method to our model class:
         representation of the code snippet.
         """
         lexer = get_lexer_by_name(self.language)
-        linenos = self.linenos and 'table' or False
-        options = self.title and {'title': self.title} or {}
+        linenos = 'table' if self.linenos else False
+        options = {'title': self.title} if self.title else {}
         formatter = HtmlFormatter(style=self.style, linenos=linenos,
                                   full=True, **options)
         self.highlighted = highlight(self.code, lexer, formatter)
-        super(Snippet, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
 When that's all done we'll need to update our database tables.
 Normally we'd create a database migration in order to do that, but for the purposes of this tutorial, let's just delete the database and start again.
 
-    rm -f tmp.db db.sqlite3
+    rm -f db.sqlite3
     rm -r snippets/migrations
     python manage.py makemigrations snippets
     python manage.py migrate
@@ -63,11 +63,11 @@ Now that we've got some users to work with, we'd better add representations of t
 
         class Meta:
             model = User
-            fields = ('id', 'username', 'snippets')
+            fields = ['id', 'username', 'snippets']
 
 Because `'snippets'` is a *reverse* relationship on the User model, it will not be included by default when using the `ModelSerializer` class, so we needed to add an explicit field for it.
 
-We'll also add a couple of views to `views.py`.  We'd like to just use read-only views for the user representations, so we'll use the `ListAPIView` and `RetrieveAPIView` generic class based views.
+We'll also add a couple of views to `views.py`.  We'd like to just use read-only views for the user representations, so we'll use the `ListAPIView` and `RetrieveAPIView` generic class-based views.
 
     from django.contrib.auth.models import User
 
@@ -83,12 +83,12 @@ We'll also add a couple of views to `views.py`.  We'd like to just use read-only
 
 Make sure to also import the `UserSerializer` class
 
-	from snippets.serializers import UserSerializer
+    from snippets.serializers import UserSerializer
 
-Finally we need to add those views into the API, by referencing them from the URL conf. Add the following to the patterns in `urls.py`.
+Finally we need to add those views into the API, by referencing them from the URL conf. Add the following to the patterns in `snippets/urls.py`.
 
-    url(r'^users/$', views.UserList.as_view()),
-    url(r'^users/(?P<pk>[0-9]+)/$', views.UserDetail.as_view()),
+    path('users/', views.UserList.as_view()),
+    path('users/<int:pk>/', views.UserDetail.as_view()),
 
 ## Associating Snippets with Users
 
@@ -127,7 +127,7 @@ First add the following import in the views module
 
 Then, add the following property to **both** the `SnippetList` and `SnippetDetail` view classes.
 
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 ## Adding login to the Browsable API
 
@@ -137,20 +137,19 @@ We can add a login view for use with the browsable API, by editing the URLconf i
 
 Add the following import at the top of the file:
 
-    from django.conf.urls import include
+    from django.urls import path, include
 
 And, at the end of the file, add a pattern to include the login and logout views for the browsable API.
 
     urlpatterns += [
-        url(r'^api-auth/', include('rest_framework.urls',
-                                   namespace='rest_framework')),
+        path('api-auth/', include('rest_framework.urls')),
     ]
 
-The `r'^api-auth/'` part of pattern can actually be whatever URL you want to use.  The only restriction is that the included urls must use the `'rest_framework'` namespace.
+The `'api-auth/'` part of pattern can actually be whatever URL you want to use.
 
 Now if you open up the browser again and refresh the page you'll see a 'Login' link in the top right of the page.  If you log in as one of the users you created earlier, you'll be able to create code snippets again.
 
-Once you've created a few code snippets, navigate to the '/users/' endpoint, and notice that the representation includes a list of the snippet pks that are associated with each user, in each user's 'snippets' field.
+Once you've created a few code snippets, navigate to the '/users/' endpoint, and notice that the representation includes a list of the snippet ids that are associated with each user, in each user's 'snippets' field.
 
 ## Object level permissions
 
@@ -179,8 +178,8 @@ In the snippets app, create a new file, `permissions.py`
 
 Now we can add that custom permission to our snippet instance endpoint, by editing the `permission_classes` property on the `SnippetDetail` view class:
 
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,
-                          IsOwnerOrReadOnly,)
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly,
+                          IsOwnerOrReadOnly]
 
 Make sure to also import the `IsOwnerOrReadOnly` class.
 
@@ -198,7 +197,7 @@ If we're interacting with the API programmatically we need to explicitly provide
 
 If we try to create a snippet without authenticating, we'll get an error:
 
-    http POST http://127.0.0.1:8000/snippets/ code="print 123"
+    http POST http://127.0.0.1:8000/snippets/ code="print(123)"
 
     {
         "detail": "Authentication credentials were not provided."
@@ -206,13 +205,13 @@ If we try to create a snippet without authenticating, we'll get an error:
 
 We can make a successful request by including the username and password of one of the users we created earlier.
 
-    http -a tom:password POST http://127.0.0.1:8000/snippets/ code="print 789"
+    http -a admin:password123 POST http://127.0.0.1:8000/snippets/ code="print(789)"
 
     {
-        "id": 5,
-        "owner": "tom",
+        "id": 1,
+        "owner": "admin",
         "title": "foo",
-        "code": "print 789",
+        "code": "print(789)",
         "linenos": false,
         "language": "python",
         "style": "friendly"

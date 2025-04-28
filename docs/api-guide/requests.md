@@ -1,4 +1,7 @@
-source: request.py
+---
+source:
+    - request.py
+---
 
 # Requests
 
@@ -20,7 +23,7 @@ REST framework's Request objects provide flexible request parsing that allows yo
 
 * It includes all parsed content, including *file and non-file* inputs.
 * It supports parsing the content of HTTP methods other than `POST`, meaning that you can access the content of `PUT` and `PATCH` requests.
-* It supports REST framework's flexible request parsing, rather than just supporting form data.  For example you can handle incoming JSON data in the same way that you handle incoming form data.
+* It supports REST framework's flexible request parsing, rather than just supporting form data.  For example you can handle incoming [JSON data] similarly to how you handle incoming [form data].
 
 For more details see the [parsers documentation].
 
@@ -46,11 +49,11 @@ If a client sends a request with a content-type that cannot be parsed then a `Un
 
 # Content negotiation
 
-The request exposes some properties that allow you to determine the result of the content negotiation stage. This allows you to implement behaviour such as selecting a different serialisation schemes for different media types.
+The request exposes some properties that allow you to determine the result of the content negotiation stage. This allows you to implement behavior such as selecting a different serialization schemes for different media types.
 
 ## .accepted_renderer
 
-The renderer instance what was selected by the content negotiation stage.
+The renderer instance that was selected by the content negotiation stage.
 
 ## .accepted_media_type
 
@@ -90,6 +93,10 @@ You won't typically need to access this property.
 
 ---
 
+**Note:** You may see a `WrappedAttributeError` raised when calling the `.user` or `.auth` properties. These errors originate from an authenticator as a standard `AttributeError`, however it's necessary that they be re-raised as a different exception type in order to prevent them from being suppressed by the outer property access. Python will not recognize that the `AttributeError` originates from the authenticator and will instead assume that the request object does not have a `.user` or `.auth` property. The authenticator will need to be fixed.
+
+---
+
 # Browser enhancements
 
 REST framework supports a few browser enhancements such as browser-based `PUT`, `PATCH` and `DELETE` forms.
@@ -118,10 +125,6 @@ For more information see the [browser enhancements documentation].
 
 You won't typically need to directly access the request's content, as you'll normally rely on REST framework's default request parsing behavior.
 
-If you do need to access the raw content directly, you should use the `.stream` property in preference to using `request.content`, as it provides transparent support for browser-based non-form content.
-
-For more information see the [browser enhancements documentation].
-
 ---
 
 # Standard HttpRequest attributes
@@ -133,5 +136,7 @@ Note that due to implementation reasons the `Request` class does not inherit fro
 
 [cite]: https://groups.google.com/d/topic/django-developers/dxI4qVzrBY4/discussion
 [parsers documentation]: parsers.md
+[JSON data]: parsers.md#jsonparser
+[form data]: parsers.md#formparser
 [authentication documentation]: authentication.md
 [browser enhancements documentation]: ../topics/browser-enhancements.md

@@ -1,4 +1,7 @@
-source: negotiation.py
+---
+source:
+    - negotiation.py
+---
 
 # Content negotiation
 
@@ -6,7 +9,7 @@ source: negotiation.py
 >
 > &mdash; [RFC 2616][cite], Fielding et al.
 
-[cite]: http://www.w3.org/Protocols/rfc2616/rfc2616-sec12.html
+[cite]: https://www.w3.org/Protocols/rfc2616/rfc2616-sec12.html
 
 Content negotiation is the process of selecting one of multiple possible representations to return to a client, based on client or server preferences.
 
@@ -77,9 +80,9 @@ The default content negotiation class may be set globally, using the `DEFAULT_CO
         'DEFAULT_CONTENT_NEGOTIATION_CLASS': 'myapp.negotiation.IgnoreClientContentNegotiation',
     }
 
-You can also set the content negotiation used for an individual view, or viewset, using the `APIView` class based views.
+You can also set the content negotiation used for an individual view, or viewset, using the `APIView` class-based views.
 
-	from myapp.negotiation import IgnoreClientContentNegotiation
+    from myapp.negotiation import IgnoreClientContentNegotiation
     from rest_framework.response import Response
     from rest_framework.views import APIView
 
@@ -94,4 +97,4 @@ You can also set the content negotiation used for an individual view, or viewset
                 'accepted media type': request.accepted_renderer.media_type
             })
 
-[accept-header]: http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
+[accept-header]: https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html

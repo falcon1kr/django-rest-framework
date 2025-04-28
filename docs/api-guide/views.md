@@ -1,9 +1,12 @@
-source: decorators.py
-        views.py
+---
+source:
+    - decorators.py
+    - views.py
+---
 
-# Class Based Views
+# Class-based Views
 
-> Django's class based views are a welcome departure from the old-style views.
+> Django's class-based views are a welcome departure from the old-style views.
 >
 > &mdash; [Reinout van Rees][cite]
 
@@ -23,6 +26,7 @@ For example:
     from rest_framework.views import APIView
     from rest_framework.response import Response
     from rest_framework import authentication, permissions
+    from django.contrib.auth.models import User
 
     class ListUsers(APIView):
         """
@@ -31,8 +35,8 @@ For example:
         * Requires token authentication.
         * Only admin users are able to access this view.
         """
-        authentication_classes = (authentication.TokenAuthentication,)
-        permission_classes = (permissions.IsAdminUser,)
+        authentication_classes = [authentication.TokenAuthentication]
+        permission_classes = [permissions.IsAdminUser]
 
         def get(self, request, format=None):
             """
@@ -40,6 +44,13 @@ For example:
             """
             usernames = [user.username for user in User.objects.all()]
             return Response(usernames)
+
+---
+
+**Note**: The full methods, attributes on, and relations between Django REST Framework's `APIView`, `GenericAPIView`, various `Mixins`, and `Viewsets` can be initially complex. In addition to the documentation here, the [Classy Django REST Framework][classy-drf] resource provides a browsable reference, with full methods and attributes, for each of Django REST Framework's class-based views.
+
+---
+
 
 ## API policy attributes
 
@@ -72,6 +83,8 @@ The following methods are used by REST framework to instantiate the various plug
 ### .get_permissions(self)
 
 ### .get_content_negotiator(self)
+
+### .get_exception_handler(self)
 
 ## API policy implementation methods
 
@@ -119,7 +132,7 @@ You won't typically need to override this method.
 
 # Function Based Views
 
-> Saying [that Class based views] is always the superior solution is a mistake.
+> Saying [that class-based views] is always the superior solution is a mistake.
 >
 > &mdash; [Nick Coghlan][cite2]
 
@@ -132,6 +145,7 @@ REST framework also allows you to work with regular function based views.  It pr
 The core of this functionality is the `api_view` decorator, which takes a list of HTTP methods that your view should respond to. For example, this is how you would write a very simple view that just manually returns some data:
 
     from rest_framework.decorators import api_view
+    from rest_framework.response import Response
 
     @api_view()
     def hello_world(request):
@@ -147,6 +161,7 @@ By default only `GET` methods will be accepted. Other methods will respond with 
             return Response({"message": "Got some data!", "data": request.data})
         return Response({"message": "Hello, world!"})
 
+
 ## API policy decorators
 
 To override the default settings, REST framework provides a set of additional decorators which can be added to your views.  These must come *after* (below) the `@api_view` decorator.  For example, to create a view that uses a [throttle][throttling] to ensure it can only be called once per day by a particular user, use the `@throttle_classes` decorator, passing a list of throttle classes:
@@ -155,7 +170,7 @@ To override the default settings, REST framework provides a set of additional de
     from rest_framework.throttling import UserRateThrottle
 
     class OncePerDayUserThrottle(UserRateThrottle):
-            rate = '1/day'
+        rate = '1/day'
 
     @api_view(['GET'])
     @throttle_classes([OncePerDayUserThrottle])
@@ -174,7 +189,39 @@ The available decorators are:
 
 Each of these decorators takes a single argument which must be a list or tuple of classes.
 
-[cite]: http://reinout.vanrees.org/weblog/2011/08/24/class-based-views-usage.html
+
+## View schema decorator
+
+To override the default schema generation for function based views you may use
+the `@schema` decorator. This must come *after* (below) the `@api_view`
+decorator. For example:
+
+    from rest_framework.decorators import api_view, schema
+    from rest_framework.schemas import AutoSchema
+
+    class CustomAutoSchema(AutoSchema):
+        def get_link(self, path, method, base_url):
+            # override view introspection here...
+
+    @api_view(['GET'])
+    @schema(CustomAutoSchema())
+    def view(request):
+        return Response({"message": "Hello for today! See you tomorrow!"})
+
+This decorator takes a single `AutoSchema` instance, an `AutoSchema` subclass
+instance or `ManualSchema` instance as described in the [Schemas documentation][schemas].
+You may pass `None` in order to exclude the view from schema generation.
+
+    @api_view(['GET'])
+    @schema(None)
+    def view(request):
+        return Response({"message": "Will not appear in schema!"})
+
+
+[cite]: https://reinout.vanrees.org/weblog/2011/08/24/class-based-views-usage.html
 [cite2]: http://www.boredomandlaziness.org/2012/05/djangos-cbvs-are-not-mistake-but.html
 [settings]: settings.md
 [throttling]: throttling.md
+[schemas]: schemas.md
+[classy-drf]: http://www.cdrf.co
+
